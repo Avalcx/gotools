@@ -77,11 +77,11 @@ func Acme(domainList []string, ak string, sk string) {
 		log.Fatal(err)
 	}
 	os.MkdirAll(domainList[0], 0755)
-	err = os.WriteFile(domainList[0]+"key.pem", certificates.PrivateKey, os.ModePerm)
+	err = os.WriteFile(domainList[0]+"/key.pem", certificates.PrivateKey, os.ModePerm)
 	if err != nil {
 		log.Print(err)
 	}
-	err = os.WriteFile(domainList[0]+"cert.pem", certificates.Certificate, os.ModePerm)
+	err = os.WriteFile(domainList[0]+"/cert.pem", certificates.Certificate, os.ModePerm)
 	if err != nil {
 		log.Print(err)
 	}
