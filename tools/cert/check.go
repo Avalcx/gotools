@@ -3,6 +3,7 @@ package cert
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
 	"net"
@@ -11,6 +12,15 @@ import (
 	"strings"
 	"time"
 )
+
+type CertInfo struct {
+	Domain        string
+	StartTime     string
+	EndTime       string
+	Expire        string
+	IsPriviteCert bool
+	Issuer        pkix.Name
+}
 
 func CheckFromDomain(domain string) {
 	conn, err := net.Dial("tcp", domain+":443")
@@ -32,9 +42,9 @@ func CheckFromDomain(domain string) {
 	}
 
 	cert := tlsConn.ConnectionState().PeerCertificates[0]
-	certInfo := CertInfo{}
-	getCertInfo(cert, &certInfo)
-	printCertInfo(&certInfo)
+	c := CertInfo{}
+	c.getCertInfo(cert)
+	c.printCertInfo()
 }
 
 func CheckFromCrtFile(file string) {
@@ -57,26 +67,26 @@ func CheckFromCrtFile(file string) {
 		return
 	}
 
-	certInfo := CertInfo{}
-	getCertInfo(cert, &certInfo)
-	printCertInfo(&certInfo)
+	c := CertInfo{}
+	c.getCertInfo(cert)
+	c.printCertInfo()
 }
 
-type CertInfo struct {
-	Domain    string
-	StartTime string
-	EndTime   string
-	Expire    string
+func (c *CertInfo) getCertInfo(cert *x509.Certificate) {
+	c.Domain = strings.Join(cert.DNSNames, " ")
+	c.StartTime = cert.NotBefore.Format(time.DateTime)
+	c.EndTime = cert.NotAfter.Format(time.DateTime)
+	now := time.Now()
+	expire := int(cert.NotAfter.Sub(now).Hours())
+	c.Expire = strconv.Itoa(expire/24) + "days " + strconv.Itoa(expire%24) + "hours"
+	if len(cert.IssuingCertificateURL) == 0 {
+		c.IsPriviteCert = true
+	} else {
+		c.IsPriviteCert = false
+	}
+	c.Issuer = cert.Issuer
 }
 
-func getCertInfo(cert *x509.Certificate, certInfo *CertInfo) {
-	certInfo.Domain = strings.Join(cert.DNSNames, " ")
-	certInfo.StartTime = cert.NotBefore.Format(time.DateTime)
-	certInfo.EndTime = cert.NotAfter.Format(time.DateTime)
-	expire := int(cert.NotAfter.Sub(cert.NotBefore).Hours())
-	certInfo.Expire = strconv.Itoa(expire/24) + "days " + strconv.Itoa(expire%24) + "hours"
-}
-
-func printCertInfo(certInfo *CertInfo) {
-	fmt.Printf("domain: %s\nstartTime: %s\nendTime: %s\nexpire: %v", certInfo.Domain, certInfo.StartTime, certInfo.EndTime, certInfo.Expire)
+func (c *CertInfo) printCertInfo() {
+	fmt.Printf("domain: %s\nstartTime: %s\nendTime: %s\nexpire: %v\nisPriviteCert: %v\nIssuer: %v\n", c.Domain, c.StartTime, c.EndTime, c.Expire, c.IsPriviteCert, c.Issuer)
 }

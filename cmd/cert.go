@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"gotools/tools/cert"
+	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -15,6 +17,12 @@ var certCmd = &cobra.Command{
 	gotools cert check --domain=baidu.com
 	gotools cert check --file=cert.pem
 	`,
+}
+
+func stepCertCmd() {
+	stepCertCheckCmd()
+	stepCertCreateCmd()
+	stepCertAcmeCmd()
 }
 
 var checkCmd = &cobra.Command{
@@ -34,11 +42,6 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-func stepCertCmd() {
-	stepCertCheckCmd()
-	stepCertCreateCmd()
-}
-
 func stepCertCheckCmd() {
 	certCmd.AddCommand(checkCmd)
 	checkCmd.Flags().StringP("domain", "d", "", "通过域名查询")
@@ -53,8 +56,8 @@ func checkFromFile(file string) {
 	cert.CheckFromCrtFile(file)
 }
 
-var createCmd = &cobra.Command{
-	Use:   "create",
+var priviteCmd = &cobra.Command{
+	Use:   "privite",
 	Short: "生成私有证书",
 	Run: func(cmd *cobra.Command, args []string) {
 		years, _ := cmd.Flags().GetInt("years")
@@ -64,11 +67,43 @@ var createCmd = &cobra.Command{
 }
 
 func stepCertCreateCmd() {
-	certCmd.AddCommand(createCmd)
-	createCmd.Flags().IntP("years", "y", 10, "有效期")
-	createCmd.Flags().StringSliceP("domain", "d", nil, "域名,默认为空,可指定多个")
+	certCmd.AddCommand(priviteCmd)
+	priviteCmd.Flags().IntP("years", "y", 10, "有效期")
+	priviteCmd.Flags().StringSliceP("domain", "d", nil, "domian list")
 }
 
 func createPriviteCert(domain []string, years int) {
 	cert.GeneratePrivateCert(domain, years)
+}
+
+var acmeCmd = &cobra.Command{
+	Use:   "acme",
+	Short: "生成Let's Encrypt证书,only by aliDNS",
+	Run: func(cmd *cobra.Command, args []string) {
+		domainList, _ := cmd.Flags().GetStringSlice("domain")
+		ak, _ := cmd.Flags().GetString("accesskey")
+		if ak == "" {
+			ak = os.Getenv("ALI_ACCESSKEY")
+		}
+		sk, _ := cmd.Flags().GetString("secretkey")
+		if sk == "" {
+			sk = os.Getenv("ALI_SECRETKEY")
+		}
+		if ak == "" || sk == "" {
+			log.Fatal("ACCESSKEY or SECRETKEY is empty")
+		}
+		cmd.Flags()
+		createAcmeCert(domainList, ak, sk)
+	},
+}
+
+func stepCertAcmeCmd() {
+	certCmd.AddCommand(acmeCmd)
+	acmeCmd.Flags().StringSliceP("domain", "d", nil, "domain")
+	acmeCmd.Flags().StringP("accesskey", "a", "", "accessKey,default from env")
+	acmeCmd.Flags().StringP("secretkey", "s", "", "secretkey,default from env")
+}
+
+func createAcmeCert(domainList []string, ak string, sk string) {
+	cert.Acme(domainList, ak, sk)
 }
