@@ -30,9 +30,10 @@ var checkCmd = &cobra.Command{
 	Short: "查看证书有效期",
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, _ := cmd.Flags().GetString("domain")
+		port, _ := cmd.Flags().GetString("port")
 
 		if domain != "" {
-			checkFromDomain(domain)
+			checkFromDomain(domain, port)
 		}
 
 		file, _ := cmd.Flags().GetString("file")
@@ -45,11 +46,12 @@ var checkCmd = &cobra.Command{
 func stepCertCheckCmd() {
 	certCmd.AddCommand(checkCmd)
 	checkCmd.Flags().StringP("domain", "d", "", "通过域名查询")
+	checkCmd.Flags().StringP("port", "p", "443", "通过域名查询的端口")
 	checkCmd.Flags().StringP("file", "f", "", "通过文件查询")
 }
 
-func checkFromDomain(domain string) {
-	cert.CheckFromDomain(domain)
+func checkFromDomain(domain string, port string) {
+	cert.CheckFromDomain(domain, port)
 }
 
 func checkFromFile(file string) {

@@ -5,7 +5,9 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -22,8 +24,8 @@ type CertInfo struct {
 	Issuer        pkix.Name
 }
 
-func CheckFromDomain(domain string) {
-	conn, err := net.Dial("tcp", domain+":443")
+func CheckFromDomain(domain string, port string) {
+	conn, err := net.Dial("tcp", domain+":"+port)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -37,8 +39,16 @@ func CheckFromDomain(domain string) {
 	tlsConn := tls.Client(conn, &config)
 
 	err = tlsConn.Handshake()
-	if err != nil {
-		fmt.Println(err.Error())
+	if errors.Is(err, io.EOF) {
+		fmt.Println("目标域名错误或网络异常")
+		return
+	} else if !errors.Is(err, nil) {
+		fmt.Println(err)
+	}
+
+	if len(tlsConn.ConnectionState().PeerCertificates) < 1 {
+		fmt.Println("证书读取异常")
+		return
 	}
 
 	cert := tlsConn.ConnectionState().PeerCertificates[0]
