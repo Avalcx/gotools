@@ -19,10 +19,10 @@ var certCmd = &cobra.Command{
 	`,
 }
 
-func stepCertCmd() {
-	stepCertCheckCmd()
-	stepCertCreateCmd()
-	stepCertAcmeCmd()
+func setupCertCmd() {
+	setupCertCheckCmd()
+	setupCertCreateCmd()
+	setupCertAcmeCmd()
 }
 
 var checkCmd = &cobra.Command{
@@ -43,7 +43,7 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-func stepCertCheckCmd() {
+func setupCertCheckCmd() {
 	certCmd.AddCommand(checkCmd)
 	checkCmd.Flags().StringP("domain", "d", "", "通过域名查询")
 	checkCmd.Flags().StringP("port", "p", "443", "通过域名查询的端口")
@@ -68,7 +68,7 @@ var priviteCmd = &cobra.Command{
 	},
 }
 
-func stepCertCreateCmd() {
+func setupCertCreateCmd() {
 	certCmd.AddCommand(priviteCmd)
 	priviteCmd.Flags().IntP("years", "y", 10, "有效期")
 	priviteCmd.Flags().StringSliceP("domain", "d", nil, "domian list")
@@ -99,7 +99,7 @@ var acmeCmd = &cobra.Command{
 	},
 }
 
-func stepCertAcmeCmd() {
+func setupCertAcmeCmd() {
 	certCmd.AddCommand(acmeCmd)
 	acmeCmd.Flags().StringSliceP("domain", "d", nil, "domain")
 	acmeCmd.Flags().StringP("accesskey", "a", "", "accessKey,default from env")

@@ -13,8 +13,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	stepCertCmd()
-	stepPortCmd()
+	setupCertCmd()
+	setupPortCmd()
 	rootCmd.AddCommand(certCmd)
 	rootCmd.AddCommand(portCmd)
 }

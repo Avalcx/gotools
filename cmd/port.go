@@ -11,8 +11,8 @@ var portCmd = &cobra.Command{
 	Short: "端口工具",
 	Long:  "用于测试网络策略或防火墙策略",
 	Example: `
-	gotools port server --port=8080-8099
-	gotools port client --port=8080-8099 --host=127.0.0.1
+	gotools port server --port=80,443,8080-8099
+	gotools port client --port=80,443,8080-8099 --host=127.0.0.1
 	`,
 }
 
@@ -35,17 +35,17 @@ var clientCmd = &cobra.Command{
 	},
 }
 
-func stepPortCmd() {
-	stepPortServerCmd()
-	stepPortClientCmd()
+func setupPortCmd() {
+	setupPortServerCmd()
+	setupPortClientCmd()
 }
 
-func stepPortServerCmd() {
+func setupPortServerCmd() {
 	portCmd.AddCommand(serverCmd)
 	serverCmd.Flags().String("ports", "", "监听端口")
 }
 
-func stepPortClientCmd() {
+func setupPortClientCmd() {
 	portCmd.AddCommand(clientCmd)
 	clientCmd.Flags().String("ports", "", "测试端口")
 	clientCmd.Flags().String("host", "127.0.0.1", "测试主机")
