@@ -84,11 +84,11 @@ func CheckFromCrtFile(file string) {
 
 func (c *CertInfo) getCertInfo(cert *x509.Certificate) {
 	c.Domain = strings.Join(cert.DNSNames, " ")
-	c.StartTime = cert.NotBefore.Format(time.DateTime)
-	c.EndTime = cert.NotAfter.Format(time.DateTime)
+	c.StartTime = cert.NotBefore.Local().Format(time.DateTime)
+	c.EndTime = cert.NotAfter.Local().Format(time.DateTime)
 	now := time.Now()
 	expire := int(cert.NotAfter.Sub(now).Hours())
-	c.Expire = strconv.Itoa(expire/24) + "days " + strconv.Itoa(expire%24) + "hours"
+	c.Expire = strconv.Itoa(expire / 24)
 	if len(cert.IssuingCertificateURL) == 0 {
 		c.IsPriviteCert = true
 	} else {

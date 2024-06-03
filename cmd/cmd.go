@@ -15,8 +15,10 @@ var rootCmd = &cobra.Command{
 func init() {
 	setupCertCmd()
 	setupPortCmd()
+	setupSshkeyCmd()
 	rootCmd.AddCommand(certCmd)
 	rootCmd.AddCommand(portCmd)
+	rootCmd.AddCommand(sshKeyCmd)
 }
 
 func Run() {

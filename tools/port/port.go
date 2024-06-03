@@ -1,39 +1,38 @@
 package port
 
 import (
-	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"strconv"
 	"strings"
-	"sync"
-
-	"github.com/gin-gonic/gin"
 )
 
-func StartServer(portSpecs string) {
-	gin.SetMode(gin.ReleaseMode)
-	ports := parsePortSpecs(portSpecs)
-	startHTTPServers(ports)
+func StartServer(portSpecs string, mode string) {
+	switch mode {
+	case "tcp":
+		tcpServers(portSpecs)
+	case "udp":
+		udpServers(portSpecs)
+	default:
+		tcpServers(portSpecs)
+	}
 }
 
-func StartClient(portSpecs string, host string) {
-	fmt.Printf("测试主机:%s\n", host)
-	ports := parsePortSpecs(portSpecs)
-	for _, port := range ports {
-		isopen := get(host, port)
-		if isopen {
-			fmt.Printf("端口: %v open\n", port)
-		} else {
-			fmt.Printf("端口: %v close\n", port)
-		}
+func StartClient(portSpecs string, host string, mode string) {
+	switch mode {
+	case "tcp":
+		tcpClients(host, portSpecs)
+	case "udp":
+		udpClients(host, portSpecs)
+	default:
+		tcpClients(host, portSpecs)
 	}
 }
 
 func parsePortSpecs(portSpecs string) []int {
 	var ports []int
-
+	if portSpecs == "" {
+		log.Fatal("ports参数不能为空")
+	}
 	portSpecList := strings.Split(portSpecs, ",")
 	for _, portSpec := range portSpecList {
 		if strings.Contains(portSpec, "-") {
@@ -68,54 +67,5 @@ func parsePortSpecs(portSpecs string) []int {
 			log.Fatal("端口超出范围(0~65535)")
 		}
 	}
-
 	return ports
-}
-
-func startHTTPServers(ports []int) {
-	var wg sync.WaitGroup
-
-	for _, port := range ports {
-		wg.Add(1)
-
-		go func(p int) {
-			defer wg.Done()
-
-			if isLocalPortOpen(p) {
-				log.Printf("Port %d 已占用,忽略", p)
-				return
-			}
-
-			router := gin.Default()
-			router.Any("/", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{"status": "success", "message": fmt.Sprintf("Port %d is open", p)})
-			})
-
-			err := router.Run(fmt.Sprintf(":%d", p))
-			if err != nil {
-				log.Printf("Failed to start server on port %d: %v", p, err)
-			}
-		}(port)
-		log.Printf("Port %d 已启动", port)
-	}
-
-	wg.Wait()
-}
-
-func isLocalPortOpen(port int) bool {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return true // 端口被占用
-	}
-	defer listener.Close()
-	return false // 端口可用
-}
-
-func get(host string, port int) bool {
-	resp, err := http.Get("http://" + host + ":" + strconv.Itoa(port))
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return true
 }

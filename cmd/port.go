@@ -21,7 +21,8 @@ var serverCmd = &cobra.Command{
 	Short: "server模式",
 	Run: func(cmd *cobra.Command, args []string) {
 		portSpecs, _ := cmd.Flags().GetString("ports")
-		startPortServer(portSpecs)
+		mode, _ := cmd.Flags().GetString("mode")
+		startPortServer(portSpecs, mode)
 	},
 }
 
@@ -31,7 +32,8 @@ var clientCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		portSpecs, _ := cmd.Flags().GetString("ports")
 		host, _ := cmd.Flags().GetString("host")
-		startPortClient(portSpecs, host)
+		mode, _ := cmd.Flags().GetString("mode")
+		startPortClient(portSpecs, host, mode)
 	},
 }
 
@@ -42,19 +44,21 @@ func setupPortCmd() {
 
 func setupPortServerCmd() {
 	portCmd.AddCommand(serverCmd)
-	serverCmd.Flags().String("ports", "", "监听端口")
+	serverCmd.Flags().StringP("ports", "p", "", "监听端口")
+	serverCmd.Flags().StringP("mode", "m", "", "tcp or udp")
 }
 
 func setupPortClientCmd() {
 	portCmd.AddCommand(clientCmd)
-	clientCmd.Flags().String("ports", "", "测试端口")
-	clientCmd.Flags().String("host", "127.0.0.1", "测试主机")
+	clientCmd.Flags().StringP("ports", "p", "", "测试端口")
+	clientCmd.Flags().StringP("host", "H", "127.0.0.1", "测试主机")
+	clientCmd.Flags().StringP("mode", "m", "", "tcp or udp")
 }
 
-func startPortServer(portSpecs string) {
-	port.StartServer(portSpecs)
+func startPortServer(portSpecs string, mode string) {
+	port.StartServer(portSpecs, mode)
 }
 
-func startPortClient(portSpecs string, host string) {
-	port.StartClient(portSpecs, host)
+func startPortClient(portSpecs string, host string, mode string) {
+	port.StartClient(portSpecs, host, mode)
 }
