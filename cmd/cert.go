@@ -13,16 +13,18 @@ var certCmd = &cobra.Command{
 	Short: "证书工具",
 	Long:  "用于生成自签名证书、查看证书的有效期",
 	Example: `
-	gotools cert create --domain=zsops.cn --years=10
-	gotools cert check --domain=baidu.com
-	gotools cert check --file=cert.pem
+	gotools cert privite -d=zsops.cn -y=10
+	gotools cert privite -d=domain1.cn -d=domain2.cn -y=10
+	gotools cert acme -d=zsops.cn -a={AliAK} -s={AliSK}
+	gotools cert check -d=baidu.com
+	gotools cert check -f=cert.pem
 	`,
 }
 
 func setupCertCmd() {
 	setupCertCheckCmd()
-	setupCertCreateCmd()
-	setupCertAcmeCmd()
+	setupPriviteCertCmd()
+	setupAcmeCertCmd()
 }
 
 var checkCmd = &cobra.Command{
@@ -31,12 +33,16 @@ var checkCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, _ := cmd.Flags().GetString("domain")
 		port, _ := cmd.Flags().GetString("port")
+		file, _ := cmd.Flags().GetString("file")
+
+		if domain != "" && file != "" {
+			log.Fatal("domain和file 不能同时有参数")
+		}
 
 		if domain != "" {
 			checkFromDomain(domain, port)
 		}
 
-		file, _ := cmd.Flags().GetString("file")
 		if file != "" {
 			checkFromFile(file)
 		}
@@ -68,7 +74,7 @@ var priviteCmd = &cobra.Command{
 	},
 }
 
-func setupCertCreateCmd() {
+func setupPriviteCertCmd() {
 	certCmd.AddCommand(priviteCmd)
 	priviteCmd.Flags().IntP("years", "y", 10, "有效期")
 	priviteCmd.Flags().StringSliceP("domain", "d", nil, "domian list")
@@ -99,7 +105,7 @@ var acmeCmd = &cobra.Command{
 	},
 }
 
-func setupCertAcmeCmd() {
+func setupAcmeCertCmd() {
 	certCmd.AddCommand(acmeCmd)
 	acmeCmd.Flags().StringSliceP("domain", "d", nil, "domain")
 	acmeCmd.Flags().StringP("accesskey", "a", "", "accessKey,default from env")

@@ -54,22 +54,22 @@ func generateOldPublicKey() []byte {
 	privateKeyPath, _ := currentSSHPath()
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		log.Fatalf("failed to read private key file: %v", err)
+		log.Fatalln("failed to read private key file:", err)
 	}
 
 	block, _ := pem.Decode(privateKeyBytes)
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
-		log.Fatalf("failed to decode PEM block containing private key")
+		log.Fatalln("failed to decode PEM block containing private key")
 	}
 
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		log.Fatalf("failed to parse private key: %v", err)
+		log.Fatalln("failed to parse private key:", err)
 	}
 
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		log.Fatalf("failed to generate public key: %v", err)
+		log.Fatalln("failed to generate public key:", err)
 	}
 
 	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
@@ -123,7 +123,7 @@ func uploadPublicKey(user, host, password, publicKey string) error {
 	return nil
 }
 
-func fileExists(path string) bool {
+func fileIsExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
@@ -176,38 +176,38 @@ func pushKey(ip string, user string, password string) {
 	privateKeyPath, publicKeyPath := currentSSHPath()
 
 	var privateKey, publicKey []byte
-	if fileExists(publicKeyPath) {
+	if fileIsExists(publicKeyPath) {
 		newPublicKey := generateOldPublicKey()
 		oldPublicKey, err := os.ReadFile(publicKeyPath)
 		if err != nil {
-			log.Fatalf("failed to read id_rs.pub: %v", err)
+			log.Fatalln("failed to read id_rs.pub:", err)
 		}
 		if string(oldPublicKey) == string(newPublicKey) {
 			publicKey = oldPublicKey
 		} else {
 			publicKey = newPublicKey
 			if err := os.WriteFile(publicKeyPath, publicKey, 0644); err != nil {
-				log.Fatalf("failed to save public key: %v", err)
+				log.Fatalln("failed to save public key:", err)
 			}
 		}
 	} else {
 		var err error
 		privateKey, publicKey, err = generateNewSSHKeyPair()
 		if err != nil {
-			log.Fatalf("failed to generate SSH key pair: %v", err)
+			log.Fatalln("failed to generate SSH key pair:", err)
 		}
 
 		if err := os.WriteFile(privateKeyPath, privateKey, 0600); err != nil {
-			log.Fatalf("failed to save private key: %v", err)
+			log.Fatalln("failed to save private key:", err)
 		}
 
 		if err := os.WriteFile(publicKeyPath, publicKey, 0600); err != nil {
-			log.Fatalf("failed to save public key: %v", err)
+			log.Fatalln("failed to save public key:", err)
 		}
 	}
 
 	if err := uploadPublicKey(user, ip, password, string(publicKey)); err != nil {
-		log.Fatalf("failed to upload public key: %v", err)
+		log.Fatalln("failed to upload public key:", err)
 	}
 	log.Printf("%s: success\n", ip)
 }
@@ -215,7 +215,7 @@ func pushKey(ip string, user string, password string) {
 func PushKeys(hosts string, user string, password string) {
 	ips, err := parseHostSpecs(hosts)
 	if err != nil {
-		log.Fatalf("hosts format error: %v", err)
+		log.Fatalln("hosts format error:", err)
 	}
 	for _, ip := range ips {
 		pushKey(ip.String(), user, password)
