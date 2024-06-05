@@ -8,17 +8,19 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ssltools",
-	Short: "一个简单的ssl工具包",
+	Use:   "gotools",
+	Short: "一个简单的gotools工具包",
 }
 
 func init() {
 	setupCertCmd()
 	setupPortCmd()
 	setupSshkeyCmd()
+	setupAnsibleCmd()
 	rootCmd.AddCommand(certCmd)
 	rootCmd.AddCommand(portCmd)
 	rootCmd.AddCommand(sshKeyCmd)
+	rootCmd.AddCommand(ansibleCmd)
 }
 
 func Run() {

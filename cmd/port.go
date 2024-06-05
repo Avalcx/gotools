@@ -16,6 +16,11 @@ var portCmd = &cobra.Command{
 	`,
 }
 
+func setupPortCmd() {
+	setupPortServerCmd()
+	setupPortClientCmd()
+}
+
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "server mode",
@@ -35,11 +40,6 @@ var clientCmd = &cobra.Command{
 		mode, _ := cmd.Flags().GetString("mode")
 		startPortClient(portSpecs, host, mode)
 	},
-}
-
-func setupPortCmd() {
-	setupPortServerCmd()
-	setupPortClientCmd()
 }
 
 func setupPortServerCmd() {
