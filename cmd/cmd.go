@@ -16,7 +16,7 @@ func init() {
 	help()
 	setupSSLCmd()
 	setupPortCmd()
-	// setupSshkeyCmd()
+	setupSshkeyCmd()
 	setupAnsibleCmd()
 	rootCmd.AddCommand(certCmd)
 	rootCmd.AddCommand(portCmd)
