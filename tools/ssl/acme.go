@@ -1,11 +1,11 @@
-package cert
+package ssl
 
 import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	cryptorand "crypto/rand"
-	"log"
+	"gotools/utils/logger"
 	"math/rand"
 	"os"
 	"time"
@@ -36,7 +36,7 @@ func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
 func Acme(domainList []string, ak string, sk string) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("%v\n", err)
 	}
 	email := generateEmail()
 	myUser := MyUser{
@@ -47,7 +47,7 @@ func Acme(domainList []string, ak string, sk string) {
 	config.Certificate.KeyType = certcrypto.RSA2048
 	client, err := lego.NewClient(config)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("%v\n", err)
 	}
 
 	cfg := alidns.NewDefaultConfig()
@@ -55,17 +55,17 @@ func Acme(domainList []string, ak string, sk string) {
 	cfg.SecretKey = sk
 	p, err := alidns.NewDNSProviderConfig(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("%v\n", err)
 	}
 	err = client.Challenge.SetDNS01Provider(p)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("%v\n", err)
 	}
 
 	// Registering acme account
 	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("%v\n", err)
 	}
 	myUser.Registration = reg
 	request := certificate.ObtainRequest{
@@ -74,16 +74,16 @@ func Acme(domainList []string, ak string, sk string) {
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("%v\n", err)
 	}
 	os.MkdirAll(domainList[0], 0755)
 	err = os.WriteFile(domainList[0]+"/key.pem", certificates.PrivateKey, os.ModePerm)
 	if err != nil {
-		log.Print(err)
+		logger.Failed("%v\n", err)
 	}
 	err = os.WriteFile(domainList[0]+"/cert.pem", certificates.Certificate, os.ModePerm)
 	if err != nil {
-		log.Print(err)
+		logger.Failed("%v\n", err)
 	}
 }
 

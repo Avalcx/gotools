@@ -1,4 +1,4 @@
-package cert
+package ssl
 
 import (
 	"crypto/tls"
@@ -6,7 +6,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
-	"fmt"
+	"gotools/utils/logger"
 	"io"
 	"net"
 	"os"
@@ -27,7 +27,7 @@ type CertInfo struct {
 func CheckFromDomain(domain string, port string) {
 	conn, err := net.Dial("tcp", domain+":"+port)
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Failed("%v\n", err)
 		return
 	}
 	defer conn.Close()
@@ -40,14 +40,14 @@ func CheckFromDomain(domain string, port string) {
 
 	err = tlsConn.Handshake()
 	if errors.Is(err, io.EOF) {
-		fmt.Println("目标域名错误或网络异常")
+		logger.Failed("目标域名错误或网络异常\n")
 		return
 	} else if !errors.Is(err, nil) {
-		fmt.Println(err)
+		logger.Failed("%v\n", err)
 	}
 
 	if len(tlsConn.ConnectionState().PeerCertificates) < 1 {
-		fmt.Println("证书读取异常")
+		logger.Failed("证书读取异常\n")
 		return
 	}
 
@@ -60,20 +60,20 @@ func CheckFromDomain(domain string, port string) {
 func CheckFromCrtFile(file string) {
 	certBytes, err := os.ReadFile(file)
 	if err != nil {
-		fmt.Printf("无法读取证书文件：%v", err)
+		logger.Failed("无法读取证书文件：%v\n", err)
 		return
 	}
 
 	// 解码 PEM 格式的证书
 	block, _ := pem.Decode(certBytes)
 	if block == nil {
-		fmt.Printf("无法解码 PEM 格式的证书：%s", err)
+		logger.Failed("无法解码 PEM 格式的证书：%v\n", err)
 		return
 	}
 	// 解析证书
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		fmt.Printf("无法解析证书：%s", err)
+		logger.Failed("无法解析证书：%v\n", err)
 		return
 	}
 
@@ -98,5 +98,5 @@ func (c *CertInfo) getCertInfo(cert *x509.Certificate) {
 }
 
 func (c *CertInfo) printCertInfo() {
-	fmt.Printf("domain: %s\nstartTime: %s\nendTime: %s\nexpire: %v\nisPriviteCert: %v\nIssuer: %v\n", c.Domain, c.StartTime, c.EndTime, c.Expire, c.IsPriviteCert, c.Issuer)
+	logger.Printf("domain: %s\nstartTime: %s\nendTime: %s\nexpire: %v\nisPriviteCert: %v\nIssuer: %v\n", c.Domain, c.StartTime, c.EndTime, c.Expire, c.IsPriviteCert, c.Issuer)
 }

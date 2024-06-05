@@ -1,4 +1,4 @@
-package cert
+package ssl
 
 import (
 	"crypto/rand"
@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"log"
+	"gotools/utils/logger"
 	"math/big"
 	"os"
 	"time"
@@ -20,7 +20,7 @@ func GeneratePrivateCert(domainList []string, years int) {
 	// 生成私钥
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		log.Fatalln("Failed to generate private key:", err)
+		logger.Fatal("Failed to generate private key:%v\n", err)
 	}
 
 	// 准备证书模板
@@ -44,24 +44,24 @@ func GeneratePrivateCert(domainList []string, years int) {
 	// 生成证书
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privKey.PublicKey, privKey)
 	if err != nil {
-		log.Fatalln("Failed to create certificate:", err)
+		logger.Fatal("Failed to create certificate:%v\n", err)
 	}
 
 	// 将证书保存到文件
 	certOut, err := os.Create("cert.pem")
 	if err != nil {
-		log.Fatalln("Failed to open cert.pem for writing:", err)
+		logger.Fatal("Failed to open cert.pem for writing:%v\n", err)
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
-	log.Println("Certificate saved to cert.pem")
+	logger.Success("Certificate saved to cert.pem\n")
 
 	// 将私钥保存到文件
 	keyOut, err := os.Create("key.pem")
 	if err != nil {
-		log.Fatalln("Failed to open key.pem for writing:", err)
+		logger.Fatal("Failed to open key.pem for writing:%v\n", err)
 	}
 	pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privKey)})
 	keyOut.Close()
-	log.Println("Private key saved to key.pem")
+	logger.Success("Private key saved to key.pem\n")
 }

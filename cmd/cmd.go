@@ -13,9 +13,10 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	setupCertCmd()
+	help()
+	setupSSLCmd()
 	setupPortCmd()
-	setupSshkeyCmd()
+	// setupSshkeyCmd()
 	setupAnsibleCmd()
 	rootCmd.AddCommand(certCmd)
 	rootCmd.AddCommand(portCmd)
@@ -27,5 +28,22 @@ func Run() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+}
+
+func help() {
+	//去除默认的--help的-h 的flag
+	rootCmd.PersistentFlags().BoolP("help", "", false, "Help for this command")
+
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		help, err := cmd.Flags().GetBool("help")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		if help {
+			cmd.Help()
+			os.Exit(0)
+		}
 	}
 }

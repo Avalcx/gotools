@@ -1,42 +1,48 @@
 package cmd
 
 import (
-	"gotools/tools/cert"
-	"log"
+	"gotools/tools/ssl"
+	"gotools/utils/logger"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 var certCmd = &cobra.Command{
-	Use:   "cert",
+	Use:   "ssl",
 	Short: "证书工具",
-	Long:  "用于生成自签名证书、查看证书的有效期",
 	Example: `
-	gotools cert privite -d=zsops.cn -y=10
-	gotools cert privite -d=domain1.cn -d=domain2.cn -y=10
-	gotools cert acme -d=zsops.cn -a={AliAK} -s={AliSK}
-	gotools cert check -d=baidu.com
-	gotools cert check -f=cert.pem
+	gotools ssl check
+	gotools ssl privite
+	gotools ssl acme
 	`,
 }
 
-func setupCertCmd() {
-	setupCertCheckCmd()
+func setupSSLCmd() {
+	setupSSLCheckCmd()
 	setupPriviteCertCmd()
 	setupAcmeCertCmd()
 }
 
 var checkCmd = &cobra.Command{
 	Use:   "check",
-	Short: "查看证书有效期",
+	Short: "通过域名或证书文件检查证书信息",
+	Example: `
+	gotools ssl check -d=baidu.com
+	gotools ssl check -f=cert.pem
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
+			cmd.Help()
+			return
+		}
+
 		domain, _ := cmd.Flags().GetString("domain")
 		port, _ := cmd.Flags().GetString("port")
 		file, _ := cmd.Flags().GetString("file")
 
 		if domain != "" && file != "" {
-			log.Fatal("domain和file 不能同时有参数")
+			logger.Fatal("domain和file 不能同时有参数")
 		}
 
 		if domain != "" {
@@ -49,7 +55,7 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-func setupCertCheckCmd() {
+func setupSSLCheckCmd() {
 	certCmd.AddCommand(checkCmd)
 	checkCmd.Flags().StringP("domain", "d", "", "通过域名查询")
 	checkCmd.Flags().StringP("port", "p", "443", "通过域名查询的端口")
@@ -57,17 +63,26 @@ func setupCertCheckCmd() {
 }
 
 func checkFromDomain(domain string, port string) {
-	cert.CheckFromDomain(domain, port)
+	ssl.CheckFromDomain(domain, port)
 }
 
 func checkFromFile(file string) {
-	cert.CheckFromCrtFile(file)
+	ssl.CheckFromCrtFile(file)
 }
 
 var priviteCmd = &cobra.Command{
 	Use:   "privite",
-	Short: "生成私有证书",
+	Short: "生成自签证书",
+	Example: `
+	gotools ssl privite -d=zsops.cn -y=10
+	gotools ssl privite -d=domain1.cn -d=domain2.cn -y=10
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
+			cmd.Help()
+			return
+		}
+
 		years, _ := cmd.Flags().GetInt("years")
 		domain, _ := cmd.Flags().GetStringSlice("domain")
 		createPriviteCert(domain, years)
@@ -81,13 +96,21 @@ func setupPriviteCertCmd() {
 }
 
 func createPriviteCert(domain []string, years int) {
-	cert.GeneratePrivateCert(domain, years)
+	ssl.GeneratePrivateCert(domain, years)
 }
 
 var acmeCmd = &cobra.Command{
 	Use:   "acme",
 	Short: "生成Let's Encrypt证书,only by aliDNS",
+	Example: `
+	gotools ssl acme -d=zsops.cn -a={AliAK} -s={AliSK}
+	`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
+			cmd.Help()
+			return
+		}
+
 		domainList, _ := cmd.Flags().GetStringSlice("domain")
 		ak, _ := cmd.Flags().GetString("accesskey")
 		if ak == "" {
@@ -98,7 +121,7 @@ var acmeCmd = &cobra.Command{
 			sk = os.Getenv("ALI_SECRETKEY")
 		}
 		if ak == "" || sk == "" {
-			log.Fatal("ACCESSKEY or SECRETKEY is empty")
+			logger.Fatal("ACCESSKEY or SECRETKEY is empty")
 		}
 		cmd.Flags()
 		createAcmeCert(domainList, ak, sk)
@@ -113,5 +136,5 @@ func setupAcmeCertCmd() {
 }
 
 func createAcmeCert(domainList []string, ak string, sk string) {
-	cert.Acme(domainList, ak, sk)
+	ssl.Acme(domainList, ak, sk)
 }

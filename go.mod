@@ -4,7 +4,6 @@ go 1.22.0
 
 require (
 	github.com/go-acme/lego/v4 v4.16.1
-	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.0
 	golang.org/x/crypto v0.19.0
 )

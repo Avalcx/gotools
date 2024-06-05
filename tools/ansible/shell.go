@@ -2,7 +2,7 @@ package ansible
 
 import (
 	"fmt"
-	"log"
+	"gotools/utils/logger"
 	"os"
 	"strings"
 
@@ -78,15 +78,14 @@ func ExecShell(host string, command string) {
 	runShell.Command = command
 	config, err := runShell.newConfig()
 	if err != nil {
-		log.Println("获取key失败")
-		return
+		logger.Fatal("获取key失败\n")
 	}
 	runShell.Config = config
 	output, exitStatus, err := runShell.run()
 	if err != nil {
-		fmt.Printf("\033[31m%v | FAILED | rc=%v >>\n %v\033[0m\n", runShell.Host, exitStatus, err)
+		logger.Failed("%v | FAILED | rc=%v >>\n %v\n", runShell.Host, exitStatus, err)
 		return
 	}
 	// 输出正确期望值的日志
-	fmt.Printf("\033[33m%v | CHANGED | rc=%v >>\n %s\033[0m\n", runShell.Host, exitStatus, output)
+	logger.Success("%v | CHANGED | rc=%v >>\n %s\n", runShell.Host, exitStatus, output)
 }

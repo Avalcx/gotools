@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/user"
@@ -15,13 +14,15 @@ import (
 	"strconv"
 	"strings"
 
+	"gotools/utils/logger"
+
 	"golang.org/x/crypto/ssh"
 )
 
 func currentSSHPath() (string, string) {
 	currentUser, err := user.Current()
 	if err != nil {
-		log.Fatalf("failed to get current user: %v", err)
+		logger.Fatal("failed to get current user: %v\n", err)
 	}
 	sshDir := filepath.Join(currentUser.HomeDir, ".ssh")
 	privateKeyPath := filepath.Join(sshDir, "id_rsa")
@@ -54,22 +55,22 @@ func generateOldPublicKey() []byte {
 	privateKeyPath, _ := currentSSHPath()
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		log.Fatalln("failed to read private key file:", err)
+		logger.Fatal("failed to read private key file:%v\n", err)
 	}
 
 	block, _ := pem.Decode(privateKeyBytes)
 	if block == nil || block.Type != "RSA PRIVATE KEY" {
-		log.Fatalln("failed to decode PEM block containing private key")
+		logger.Fatal("failed to decode PEM block containing private key")
 	}
 
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		log.Fatalln("failed to parse private key:", err)
+		logger.Fatal("failed to parse private key:%v\n", err)
 	}
 
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		log.Fatalln("failed to generate public key:", err)
+		logger.Fatal("failed to generate public key:%v\n", err)
 	}
 
 	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
@@ -180,42 +181,42 @@ func pushKey(ip string, user string, password string) {
 		newPublicKey := generateOldPublicKey()
 		oldPublicKey, err := os.ReadFile(publicKeyPath)
 		if err != nil {
-			log.Fatalln("failed to read id_rs.pub:", err)
+			logger.Fatal("failed to read id_rs.pub:%v\n", err)
 		}
 		if string(oldPublicKey) == string(newPublicKey) {
 			publicKey = oldPublicKey
 		} else {
 			publicKey = newPublicKey
 			if err := os.WriteFile(publicKeyPath, publicKey, 0644); err != nil {
-				log.Fatalln("failed to save public key:", err)
+				logger.Fatal("failed to save public key:%v\n", err)
 			}
 		}
 	} else {
 		var err error
 		privateKey, publicKey, err = generateNewSSHKeyPair()
 		if err != nil {
-			log.Fatalln("failed to generate SSH key pair:", err)
+			logger.Fatal("failed to generate SSH key pair:%v\n", err)
 		}
 
 		if err := os.WriteFile(privateKeyPath, privateKey, 0600); err != nil {
-			log.Fatalln("failed to save private key:", err)
+			logger.Fatal("failed to save private key:%v\n", err)
 		}
 
 		if err := os.WriteFile(publicKeyPath, publicKey, 0600); err != nil {
-			log.Fatalln("failed to save public key:", err)
+			logger.Fatal("failed to save public key:%v\n", err)
 		}
 	}
 
 	if err := uploadPublicKey(user, ip, password, string(publicKey)); err != nil {
-		log.Fatalln("failed to upload public key:", err)
+		logger.Fatal("failed to upload public key:%v\n", err)
 	}
-	log.Printf("%s: success\n", ip)
+	logger.Success("%s: success\n", ip)
 }
 
 func PushKeys(hosts string, user string, password string) {
 	ips, err := parseHostSpecs(hosts)
 	if err != nil {
-		log.Fatalln("hosts format error:", err)
+		logger.Fatal("hosts format error:%v\n", err)
 	}
 	for _, ip := range ips {
 		pushKey(ip.String(), user, password)

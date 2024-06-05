@@ -8,12 +8,17 @@ import (
 
 var sshKeyCmd = &cobra.Command{
 	Use:   "sshkey",
-	Short: "生成并传输sshkey",
+	Short: "ssh免密",
 	Example: `
-	gotools sshkey --hosts=192.168.1.1 --password={password} [default user is root]
-	gotools sshkey --hosts=192.168.1.1-10 --user=zsops --password={password}
+	gotools sshkey -h=192.168.1.1 -p={password} [default user is root]
+	gotools sshkey -h=192.168.1.1-10 -u=zsops -p={password}
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
+			cmd.Help()
+			return
+		}
+
 		hosts, _ := cmd.Flags().GetString("hosts")
 		user, _ := cmd.Flags().GetString("user")
 		password, _ := cmd.Flags().GetString("password")
@@ -22,7 +27,7 @@ var sshKeyCmd = &cobra.Command{
 }
 
 func setupSshkeyCmd() {
-	sshKeyCmd.Flags().StringP("hosts", "H", "", "ip(192.168.1.1 or 192.168.1.1-10)")
+	sshKeyCmd.Flags().StringP("hosts", "h", "", "ip(192.168.1.1 or 192.168.1.1-10)")
 	sshKeyCmd.Flags().StringP("user", "u", "root", "username")
 	sshKeyCmd.Flags().StringP("password", "p", "", "password")
 }
