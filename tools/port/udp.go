@@ -9,22 +9,21 @@ import (
 	"time"
 )
 
-func udpClients(host string, portSpecs string) {
-	logger.Ignore("UDP Test Host:%s\n", host)
-	ports := parsePortSpecs(portSpecs)
-	for _, port := range ports {
-		isopen := udpClient(host, port)
+func (portInfo *Port) udpClients() {
+	logger.Ignore("UDP Test Host:%s\n", portInfo.Host)
+	for _, port := range portInfo.Ports {
+		isopen := portInfo.udpClient(port)
 		if isopen {
-			logger.Success("%v | Port=%v | UDP | Status >> Open\n", host, port)
+			logger.Success("%v | Port=%v | UDP | Status >> Open\n", portInfo.Host, port)
 		} else {
-			logger.Failed("%v | Port=%v | UDP | Status >> Close\n", host, port)
+			logger.Failed("%v | Port=%v | UDP | Status >> Close\n", portInfo.Host, port)
 		}
 	}
 }
 
-func udpClient(host string, port int) bool {
+func (portInfo *Port) udpClient(port int) bool {
 	timeout := 3 * time.Second
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := fmt.Sprintf("%s:%d", portInfo.Host, port)
 	conn, err := net.DialTimeout("udp", address, timeout)
 	if err != nil {
 		return false
@@ -52,12 +51,10 @@ func udpClient(host string, port int) bool {
 	return false
 }
 
-func udpServers(portSpecs string) {
-	ports := parsePortSpecs(portSpecs)
+func (portInfo *Port) udpServers() {
 	var wg sync.WaitGroup
-	for _, port := range ports {
+	for _, port := range portInfo.Ports {
 		wg.Add(1)
-
 		go func(p int) {
 			defer wg.Done()
 			if isLocalUDPPortOpen(p) {

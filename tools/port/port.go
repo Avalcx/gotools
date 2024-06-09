@@ -6,34 +6,41 @@ import (
 	"strings"
 )
 
-func StartServer(portSpecs string, mode string) {
-	switch mode {
+type Port struct {
+	PortSpecs string
+	Ports     []int
+	Protocol  string
+	Host      string
+}
+
+func (portInfo *Port) StartServer() {
+	switch portInfo.Protocol {
 	case "tcp":
-		tcpServers(portSpecs)
+		portInfo.tcpServers()
 	case "udp":
-		udpServers(portSpecs)
+		portInfo.udpServers()
 	default:
-		tcpServers(portSpecs)
+		portInfo.tcpServers()
 	}
 }
 
-func StartClient(portSpecs string, host string, mode string) {
-	switch mode {
+func (portInfo *Port) StartClient() {
+	switch portInfo.Protocol {
 	case "tcp":
-		tcpClients(host, portSpecs)
+		portInfo.tcpClients()
 	case "udp":
-		udpClients(host, portSpecs)
+		portInfo.udpClients()
 	default:
-		tcpClients(host, portSpecs)
+		portInfo.tcpClients()
 	}
 }
 
-func parsePortSpecs(portSpecs string) []int {
+func (portInfo *Port) ParsePortSpecs() {
 	var ports []int
-	if portSpecs == "" {
+	if portInfo.PortSpecs == "" {
 		logger.Fatal("ports参数不能为空\n")
 	}
-	portSpecList := strings.Split(portSpecs, ",")
+	portSpecList := strings.Split(portInfo.PortSpecs, ",")
 	for _, portSpec := range portSpecList {
 		if strings.Contains(portSpec, "-") {
 			rangeParts := strings.Split(portSpec, "-")
@@ -67,5 +74,5 @@ func parsePortSpecs(portSpecs string) []int {
 			logger.Fatal("端口超出范围(0~65535)\n")
 		}
 	}
-	return ports
+	portInfo.Ports = ports
 }

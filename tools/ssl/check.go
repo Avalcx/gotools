@@ -24,41 +24,55 @@ type CertInfo struct {
 	Issuer        pkix.Name
 }
 
-func CheckFromDomain(domain string, port string) {
-	conn, err := net.Dial("tcp", domain+":"+port)
-	if err != nil {
-		logger.Failed("%v\n", err)
-		return
+func (sslInfo *SSLInfo) Check() {
+	if (len(sslInfo.Domains) == 0 && sslInfo.CertFile == "") || (len(sslInfo.Domains) != 0 && sslInfo.CertFile != "") {
+		logger.Fatal("-d和-f至少且只能有一个参数")
 	}
-	defer conn.Close()
-
-	config := tls.Config{
-		ServerName: domain,
+	if len(sslInfo.Domains) >= 1 {
+		sslInfo.checkFromDomains()
+	} else if sslInfo.CertFile != "" {
+		sslInfo.checkFromCrtFile()
 	}
-
-	tlsConn := tls.Client(conn, &config)
-
-	err = tlsConn.Handshake()
-	if errors.Is(err, io.EOF) {
-		logger.Failed("目标域名错误或网络异常\n")
-		return
-	} else if !errors.Is(err, nil) {
-		logger.Failed("%v\n", err)
-	}
-
-	if len(tlsConn.ConnectionState().PeerCertificates) < 1 {
-		logger.Failed("证书读取异常\n")
-		return
-	}
-
-	cert := tlsConn.ConnectionState().PeerCertificates[0]
-	c := CertInfo{}
-	c.getCertInfo(cert)
-	c.printCertInfo()
 }
 
-func CheckFromCrtFile(file string) {
-	certBytes, err := os.ReadFile(file)
+func (sslInfo *SSLInfo) checkFromDomains() {
+	for _, domain := range sslInfo.Domains {
+		conn, err := net.Dial("tcp", domain+":"+sslInfo.Port)
+		if err != nil {
+			logger.Failed("%v\n", err)
+			return
+		}
+		defer conn.Close()
+
+		config := tls.Config{
+			ServerName: domain,
+		}
+
+		tlsConn := tls.Client(conn, &config)
+
+		err = tlsConn.Handshake()
+		if errors.Is(err, io.EOF) {
+			logger.Failed("目标域名错误或网络异常\n")
+			return
+		} else if !errors.Is(err, nil) {
+			logger.Failed("%v\n", err)
+		}
+
+		if len(tlsConn.ConnectionState().PeerCertificates) < 1 {
+			logger.Failed("证书读取异常\n")
+			return
+		}
+
+		cert := tlsConn.ConnectionState().PeerCertificates[0]
+		c := CertInfo{}
+		c.getCertInfo(cert)
+		c.printCertInfo()
+	}
+
+}
+
+func (sslInfo *SSLInfo) checkFromCrtFile() {
+	certBytes, err := os.ReadFile(sslInfo.CertFile)
 	if err != nil {
 		logger.Failed("无法读取证书文件：%v\n", err)
 		return

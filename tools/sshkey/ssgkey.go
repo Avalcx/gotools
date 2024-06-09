@@ -117,7 +117,7 @@ func uploadPublicKey(user, host, password, publicKey string) error {
 	}
 	defer session.Close()
 
-	cmd := fmt.Sprintf("echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", publicKey)
+	cmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", publicKey)
 	if err := session.Run(cmd); err != nil {
 		return fmt.Errorf("failed to upload public key: %v", err)
 	}
@@ -173,7 +173,7 @@ func parseHostSpecs(rangeStr string) ([]net.IP, error) {
 	}
 }
 
-func pushKey(ip string, user string, password string) {
+func pushKey(host string, user string, password string) {
 	privateKeyPath, publicKeyPath := currentSSHPath()
 
 	var privateKey, publicKey []byte
@@ -207,18 +207,20 @@ func pushKey(ip string, user string, password string) {
 		}
 	}
 
-	if err := uploadPublicKey(user, ip, password, string(publicKey)); err != nil {
+	if err := uploadPublicKey(user, host, password, string(publicKey)); err != nil {
 		logger.Fatal("failed to upload public key:%v\n", err)
 	}
-	logger.Success("%s: success\n", ip)
+	logger.Success("%v | User=%v |Status >> Success\n", host, user)
 }
 
-func PushKeys(hosts string, user string, password string) {
-	ips, err := parseHostSpecs(hosts)
-	if err != nil {
-		logger.Fatal("hosts format error:%v\n", err)
-	}
-	for _, ip := range ips {
-		pushKey(ip.String(), user, password)
+func PushKeys(hostsSlice []string, user string, password string) {
+	for _, hosts := range hostsSlice {
+		ips, err := parseHostSpecs(hosts)
+		if err != nil {
+			logger.Fatal("hosts format error:%v\n", err)
+		}
+		for _, ip := range ips {
+			pushKey(ip.String(), user, password)
+		}
 	}
 }

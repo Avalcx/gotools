@@ -33,7 +33,7 @@ func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
 	return u.key
 }
 
-func Acme(domainList []string, ak string, sk string) {
+func (sslInfo *SSLInfo) Acme() {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
 	if err != nil {
 		logger.Fatal("%v\n", err)
@@ -51,8 +51,8 @@ func Acme(domainList []string, ak string, sk string) {
 	}
 
 	cfg := alidns.NewDefaultConfig()
-	cfg.APIKey = ak
-	cfg.SecretKey = sk
+	cfg.APIKey = sslInfo.AliAK
+	cfg.SecretKey = sslInfo.AliSK
 	p, err := alidns.NewDNSProviderConfig(cfg)
 	if err != nil {
 		logger.Fatal("%v\n", err)
@@ -69,19 +69,19 @@ func Acme(domainList []string, ak string, sk string) {
 	}
 	myUser.Registration = reg
 	request := certificate.ObtainRequest{
-		Domains: domainList,
+		Domains: sslInfo.Domains,
 		Bundle:  true,
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
 		logger.Fatal("%v\n", err)
 	}
-	os.MkdirAll(domainList[0], 0755)
-	err = os.WriteFile(domainList[0]+"/key.pem", certificates.PrivateKey, os.ModePerm)
+	os.MkdirAll(sslInfo.Domains[0], 0755)
+	err = os.WriteFile("acme/key.pem", certificates.PrivateKey, os.ModePerm)
 	if err != nil {
 		logger.Failed("%v\n", err)
 	}
-	err = os.WriteFile(domainList[0]+"/cert.pem", certificates.Certificate, os.ModePerm)
+	err = os.WriteFile("acme/cert.pem", certificates.Certificate, os.ModePerm)
 	if err != nil {
 		logger.Failed("%v\n", err)
 	}

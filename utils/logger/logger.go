@@ -21,6 +21,10 @@ func Success(format string, a ...any) {
 	colorPrint(green, format, a...)
 }
 
+func Changed(format string, a ...any) {
+	colorPrint(yellow, format, a...)
+}
+
 func Failed(format string, a ...any) {
 	colorPrint(red, format, a...)
 }
@@ -36,6 +40,10 @@ func Ignore(format string, a ...any) {
 
 func Printf(format string, a ...any) {
 	fmt.Printf(format, a...)
+}
+
+func Println(a ...any) {
+	fmt.Println(a...)
 }
 
 // fmt.Println("\033[31mThis is red text\033[0m")

@@ -8,46 +8,38 @@ import (
 	"sync"
 )
 
-func tcpClients(host string, portSpecs string) {
-	ports := parsePortSpecs(portSpecs)
-	for _, port := range ports {
-		isopen := tcpClient(host, port)
+func (portInfo *Port) tcpClients() {
+	for _, port := range portInfo.Ports {
+		isopen := portInfo.tcpClient(port)
 		if isopen {
-			logger.Success("%v | Port=%v | TCP | Status >> Open\n", host, port)
+			logger.Success("%v | Port=%v | TCP | Status >> Open\n", portInfo.Host, port)
 		} else {
-			logger.Failed("%v | Port=%v | TCP | Status >> Close\n", host, port)
+			logger.Failed("%v | Port=%v | TCP | Status >> Close\n", portInfo.Host, port)
 		}
 	}
 }
 
-func tcpClient(host string, port int) bool {
-	address := fmt.Sprintf("%s:%d", host, port)
+func (portInfo *Port) tcpClient(port int) bool {
+	address := fmt.Sprintf("%s:%d", portInfo.Host, port)
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		logger.Failed("Error: %v\n", err)
 		return false
 	}
 	defer conn.Close()
 
 	_, err = conn.Write([]byte("ping"))
 	if err != nil {
-		logger.Failed("Error writing to TCP connection: %v\n", err)
 		return false
 	}
 
 	buffer := make([]byte, 1024)
 	_, err = conn.Read(buffer)
-	if err != nil {
-		logger.Failed("Error reading from TCP connection: %v\n", err)
-		return false
-	}
-	return true
+	return err == nil
 }
 
-func tcpServers(portSpecs string) {
-	ports := parsePortSpecs(portSpecs)
+func (portInfo *Port) tcpServers() {
 	var wg sync.WaitGroup
-	for _, port := range ports {
+	for _, port := range portInfo.Ports {
 		wg.Add(1)
 		go func(p int) {
 			defer wg.Done()
@@ -55,14 +47,14 @@ func tcpServers(portSpecs string) {
 				logger.Ignore("TCP Port %d 已占用,忽略", p)
 				return
 			}
-			tcpServer(p)
+			portInfo.tcpServer(p)
 		}(port)
 
 	}
 	wg.Wait()
 }
 
-func tcpServer(port int) {
+func (portInfo *Port) tcpServer(port int) {
 	addr := fmt.Sprintf(":%d", port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {

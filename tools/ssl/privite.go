@@ -12,10 +12,10 @@ import (
 	"time"
 )
 
-func GeneratePrivateCert(domainList []string, years int) {
+func (sslInfo *SSLInfo) GeneratePrivateCert() {
 	// 指定证书有效期
 	validFrom := time.Now()
-	validTo := validFrom.Add(time.Duration(years) * 365 * 24 * time.Hour)
+	validTo := validFrom.Add(time.Duration(sslInfo.Years) * 365 * 24 * time.Hour)
 
 	// 生成私钥
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -36,9 +36,9 @@ func GeneratePrivateCert(domainList []string, years int) {
 		BasicConstraintsValid: true,
 	}
 
-	if domainList != nil {
+	if sslInfo.Domains != nil {
 		// 添加主题备用名称（SAN）
-		template.DNSNames = domainList
+		template.DNSNames = sslInfo.Domains
 	}
 
 	// 生成证书
