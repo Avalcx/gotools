@@ -10,9 +10,9 @@ var sshKeyCmd = &cobra.Command{
 	Use:   "sshkey",
 	Short: "ssh免密",
 	Example: `
-	gotools sshkey -p={password} -h=192.168.1.1
-	gotools sshkey -p={password} -u=zsops -h=192.168.1.1-10 
-	gotools sshkey -p={password} -u=zsops -h=192.168.1.1 -h 192.168.1.10 
+	gotools sshkey 192.168.1.1-10 -p={password}
+	gotools sshkey group1 -p={password}
+	gotools sshkey [HOST-PATTERN] -p={password} -u=zsops --config-file=/path/to/file 
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 && cmd.Flags().NFlag() == 0 {
