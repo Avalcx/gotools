@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gotools/utils/logger"
+	"gotools/utils/sshutils"
 	"os/exec"
 )
 
@@ -55,7 +56,7 @@ func (ansible *Ansible) isNeedCopy() (bool, error) {
 		return false, err
 	}
 
-	localMD5, err := getLocalFileMd5(ansible.Copy.src)
+	localMD5, err := sshutils.GetLocalFileMd5(ansible.Copy.src)
 	if err != nil {
 		return false, err
 	}

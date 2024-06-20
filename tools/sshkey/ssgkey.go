@@ -7,53 +7,58 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"os"
-	"os/user"
-	"path/filepath"
-	"strconv"
 	"strings"
 
+	"gotools/tools/ansible"
 	"gotools/utils/logger"
+	"gotools/utils/sshutils"
 
 	"golang.org/x/crypto/ssh"
 )
 
-func currentSSHPath() (string, string) {
-	currentUser, err := user.Current()
-	if err != nil {
-		logger.Fatal("failed to get current user: %v\n", err)
-	}
-	sshDir := filepath.Join(currentUser.HomeDir, ".ssh")
-	privateKeyPath := filepath.Join(sshDir, "id_rsa")
-	publicKeyPath := filepath.Join(sshDir, "id_rsa.pub")
-	return privateKeyPath, publicKeyPath
+type SSHKey struct {
+	Host           string
+	Port           string
+	User           string
+	Password       string
+	privateKeyPath string
+	publicKeyPath  string
+	privateKey     []byte
+	publicKey      []byte
 }
 
-func generateNewSSHKeyPair() ([]byte, []byte, error) {
+func newSSHKey() *SSHKey {
+	return &SSHKey{
+		Port: "22",
+		User: "root",
+	}
+}
+
+func (sshKey *SSHKey) generateNewSSHKeyPair() error {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+	sshKey.privateKey = pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
 
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
+	sshKey.publicKey = ssh.MarshalAuthorizedKey(publicKey)
 
-	return privateKeyPEM, publicKeyBytes, nil
+	return nil
 }
 
-func generateOldPublicKey() []byte {
-	privateKeyPath, _ := currentSSHPath()
-	privateKeyBytes, err := os.ReadFile(privateKeyPath)
+func (sshKey *SSHKey) generatePublicKeyFromOldPrivateKey() {
+
+	privateKeyBytes, err := os.ReadFile(sshKey.privateKeyPath)
 	if err != nil {
 		logger.Fatal("failed to read private key file:%v\n", err)
 	}
@@ -73,20 +78,47 @@ func generateOldPublicKey() []byte {
 		logger.Fatal("failed to generate public key:%v\n", err)
 	}
 
-	publicKeyBytes := ssh.MarshalAuthorizedKey(publicKey)
-	return publicKeyBytes
+	sshKey.publicKey = ssh.MarshalAuthorizedKey(publicKey)
 }
 
-func uploadPublicKey(user, host, password, publicKey string) error {
+func (sshKey *SSHKey) refreshPublicKeyFile() {
+	if sshutils.FileIsExists(sshKey.publicKeyPath) {
+		sshKey.generatePublicKeyFromOldPrivateKey()
+		oldPublicKey, err := os.ReadFile(sshKey.publicKeyPath)
+		if err != nil {
+			logger.Fatal("failed to read id_rs.pub:%v\n", err)
+		}
+		if string(oldPublicKey) != string(sshKey.publicKey) {
+			if err := os.WriteFile(sshKey.publicKeyPath, sshKey.publicKey, 0644); err != nil {
+				logger.Fatal("failed to save public key:%v\n", err)
+			}
+		}
+	} else {
+		err := sshKey.generateNewSSHKeyPair()
+		if err != nil {
+			logger.Fatal("failed to generate SSH key pair:%v\n", err)
+		}
+
+		if err := os.WriteFile(sshKey.privateKeyPath, sshKey.privateKey, 0600); err != nil {
+			logger.Fatal("failed to save private key:%v\n", err)
+		}
+
+		if err := os.WriteFile(sshKey.publicKeyPath, sshKey.publicKey, 0600); err != nil {
+			logger.Fatal("failed to save public key:%v\n", err)
+		}
+	}
+}
+
+func (sshKey *SSHKey) uploadPublicKey() error {
 	config := &ssh.ClientConfig{
-		User: user,
+		User: sshKey.User,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
+			ssh.Password(sshKey.Password),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	addr := fmt.Sprintf("%s:22", host)
+	addr := fmt.Sprintf("%s:%s", sshKey.Host, sshKey.Port)
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		return fmt.Errorf("failed to dial: %v", err)
@@ -107,7 +139,7 @@ func uploadPublicKey(user, host, password, publicKey string) error {
 
 	existingKeys := buf.String()
 
-	if strings.Contains(existingKeys, publicKey) {
+	if strings.Contains(existingKeys, string(sshKey.publicKey)) {
 		return nil
 	}
 
@@ -117,110 +149,118 @@ func uploadPublicKey(user, host, password, publicKey string) error {
 	}
 	defer session.Close()
 
-	cmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", publicKey)
+	cmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", sshKey.publicKey)
 	if err := session.Run(cmd); err != nil {
 		return fmt.Errorf("failed to upload public key: %v", err)
 	}
 	return nil
 }
 
-func fileIsExists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
-}
-
-func parseHostSpecs(rangeStr string) ([]net.IP, error) {
-	if strings.Contains(rangeStr, "-") {
-		parts := strings.Split(rangeStr, "-")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid range format")
-		}
-
-		startIP := net.ParseIP(parts[0])
-		if startIP == nil {
-			return nil, fmt.Errorf("invalid start IP")
-		}
-
-		startParts := strings.Split(parts[0], ".")
-		if len(startParts) != 4 {
-			return nil, fmt.Errorf("invalid IP format")
-		}
-
-		startLastOctet, err := strconv.Atoi(startParts[3])
-		if err != nil {
-			return nil, fmt.Errorf("invalid last octet in start IP")
-		}
-
-		endLastOctet, err := strconv.Atoi(parts[1])
-		if err != nil {
-			return nil, fmt.Errorf("invalid end of range")
-		}
-
-		if endLastOctet < startLastOctet || endLastOctet > 255 {
-			return nil, fmt.Errorf("invalid range")
-		}
-
-		var ips []net.IP
-		for i := startLastOctet; i <= endLastOctet; i++ {
-			ip := fmt.Sprintf("%s.%s.%s.%d", startParts[0], startParts[1], startParts[2], i)
-			ips = append(ips, net.ParseIP(ip))
-		}
-		return ips, nil
-	} else {
-		var ips []net.IP
-		ips = append(ips, net.ParseIP(rangeStr))
-		return ips, nil
-	}
-}
-
-func pushKey(host string, user string, password string) {
-	privateKeyPath, publicKeyPath := currentSSHPath()
-
-	var privateKey, publicKey []byte
-	if fileIsExists(publicKeyPath) {
-		newPublicKey := generateOldPublicKey()
-		oldPublicKey, err := os.ReadFile(publicKeyPath)
-		if err != nil {
-			logger.Fatal("failed to read id_rs.pub:%v\n", err)
-		}
-		if string(oldPublicKey) == string(newPublicKey) {
-			publicKey = oldPublicKey
-		} else {
-			publicKey = newPublicKey
-			if err := os.WriteFile(publicKeyPath, publicKey, 0644); err != nil {
-				logger.Fatal("failed to save public key:%v\n", err)
-			}
-		}
-	} else {
-		var err error
-		privateKey, publicKey, err = generateNewSSHKeyPair()
-		if err != nil {
-			logger.Fatal("failed to generate SSH key pair:%v\n", err)
-		}
-
-		if err := os.WriteFile(privateKeyPath, privateKey, 0600); err != nil {
-			logger.Fatal("failed to save private key:%v\n", err)
-		}
-
-		if err := os.WriteFile(publicKeyPath, publicKey, 0600); err != nil {
-			logger.Fatal("failed to save public key:%v\n", err)
-		}
-	}
-
-	if err := uploadPublicKey(user, host, password, string(publicKey)); err != nil {
+func (sshKey *SSHKey) pushKey() {
+	sshKey.refreshPublicKeyFile()
+	if err := sshKey.uploadPublicKey(); err != nil {
 		logger.Fatal("failed to upload public key:%v\n", err)
 	}
-	logger.Success("%v | User=%v |Status >> Success\n", host, user)
+	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
 }
 
-func PushKeys(hostsSlice []string, user string, password string) {
-	for _, hosts := range hostsSlice {
-		ips, err := parseHostSpecs(hosts)
-		if err != nil {
-			logger.Fatal("hosts format error:%v\n", err)
-		}
-		for _, ip := range ips {
-			pushKey(ip.String(), user, password)
-		}
+// func PushKeys(hostsSlice []string, user string, password string) {
+// 	sshKeyInstance := newSSHKey()
+// 	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
+// 	for _, hosts := range hostsSlice {
+// 		ips, err := netutils.ParseIPRange(hosts)
+// 		if err != nil {
+// 			logger.Fatal("hosts format error:%v\n", err)
+// 		}
+// 		for _, ip := range ips {
+// 			sshKeyInstance.Host = ip.String()
+// 			sshKeyInstance.User = user
+// 			sshKeyInstance.Password = password
+// 			sshKeyInstance.pushKey()
+// 		}
+// 	}
+// }
+
+func PushKeys(hostPattern, configFile, user, password string) {
+	sshKeyInstance := newSSHKey()
+	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
+	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
+	for _, hostInfo := range hostsMap {
+		sshKeyInstance.Host = hostInfo.IP
+		sshKeyInstance.User = user
+		sshKeyInstance.Password = password
+		sshKeyInstance.pushKey()
+	}
+}
+
+func (sshKey *SSHKey) delKey() {
+	key, err := os.ReadFile(sshKey.privateKeyPath)
+	if err != nil {
+		logger.Fatal("私钥文件读取错误: %v", err)
+	}
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		logger.Fatal("解析私钥失败: %v", err)
+	}
+
+	config := &ssh.ClientConfig{
+		User: sshKey.User,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	addr := fmt.Sprintf("%s:%s", sshKey.Host, sshKey.Port)
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		logger.Failed("failed to dial: %v", err)
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		logger.Failed("failed to create session: %v", err)
+	}
+	defer session.Close()
+	session, err = client.NewSession()
+	if err != nil {
+		logger.Failed("failed to create session: %v", err)
+	}
+	defer session.Close()
+
+	sshKey.generatePublicKeyFromOldPrivateKey()
+
+	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", strings.ReplaceAll(string(sshKey.publicKey), "\n", ""))
+	if err := session.Run(cmd); err != nil {
+		logger.Failed("failed to delete public key: %v", err)
+	}
+	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
+}
+
+// func DelKeys(hostsSlice []string, user string) {
+// 	sshKeyInstance := newSSHKey()
+// 	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
+// 	for _, hosts := range hostsSlice {
+// 		ips, err := netutils.ParseIPRange(hosts)
+// 		if err != nil {
+// 			logger.Fatal("hosts format error:%v\n", err)
+// 		}
+// 		for _, ip := range ips {
+// 			sshKeyInstance.Host = ip.String()
+// 			sshKeyInstance.User = user
+// 			sshKeyInstance.delKey()
+// 		}
+// 	}
+// }
+
+func DelKeys(hostPattern, configFile, user string) {
+	sshKeyInstance := newSSHKey()
+	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
+	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
+	for _, hostInfo := range hostsMap {
+		sshKeyInstance.Host = hostInfo.IP
+		sshKeyInstance.User = user
+		sshKeyInstance.delKey()
 	}
 }

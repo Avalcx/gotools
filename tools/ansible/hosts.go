@@ -3,6 +3,7 @@ package ansible
 import (
 	"bufio"
 	"gotools/utils/logger"
+	"gotools/utils/netutils"
 	"os"
 	"strings"
 )
@@ -20,14 +21,14 @@ func (h *HostInfo) SetDefaults() {
 	}
 }
 
-func parseGroupFromFile(configFile string) (map[string][]*Ansible, error) {
+func parseGroupFromFile(configFile string) (map[string][]*HostInfo, error) {
 	file, err := os.Open(configFile)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	hosts := make(map[string][]HostInfo)
+	hosts := make(map[string][]*HostInfo)
 	var currentGroup string
 
 	scanner := bufio.NewScanner(file)
@@ -47,13 +48,13 @@ func parseGroupFromFile(configFile string) (map[string][]*Ansible, error) {
 		// [group]
 		// 192.168.1.1
 		if len(parts) == 1 {
-			if isIPAddress(parts[0]) {
+			if netutils.IsIPAddress(parts[0]) {
 				hostInfo := HostInfo{
 					Hostname: parts[0],
 					IP:       parts[0],
 				}
 				hostInfo.SetDefaults()
-				hosts[currentGroup] = append(hosts[currentGroup], hostInfo)
+				hosts[currentGroup] = append(hosts[currentGroup], &hostInfo)
 			} else {
 				logger.Fatal("%v: 不是正确的ip格式\n", parts[0])
 			}
@@ -84,7 +85,7 @@ func parseGroupFromFile(configFile string) (map[string][]*Ansible, error) {
 				}
 			}
 			hostInfo.SetDefaults()
-			hosts[currentGroup] = append(hosts[currentGroup], hostInfo)
+			hosts[currentGroup] = append(hosts[currentGroup], &hostInfo)
 		}
 	}
 
@@ -92,20 +93,42 @@ func parseGroupFromFile(configFile string) (map[string][]*Ansible, error) {
 		return nil, err
 	}
 
-	ansibleInstanceList := convertToAnsibleMap(hosts)
-	return ansibleInstanceList, nil
+	return hosts, nil
 }
 
-func convertToAnsibleMap(hosts map[string][]HostInfo) map[string][]*Ansible {
-	ansibleMap := make(map[string][]*Ansible)
+// 解析/etc/ansible/hosts文件
+func ParseHostPattern(hostPattern, configFile string) []*HostInfo {
+	hostInfoInstanceList := make([]*HostInfo, 0, 10)
 
-	for group, hostInfos := range hosts {
-		for _, hostInfo := range hostInfos {
-			ansibleInstance := &Ansible{
-				HostInfo: hostInfo,
-			}
-			ansibleMap[group] = append(ansibleMap[group], ansibleInstance)
+	// IP地址段
+	if netutils.IsIPRange(hostPattern) {
+		ipRange, err := netutils.ParseIPRange(hostPattern)
+		if err != nil {
+			logger.Fatal("%v", err)
 		}
+		for _, ip := range ipRange {
+			hostInfoInstance := NewHostInfo()
+			hostInfoInstance.IP = ip.String()
+			hostInfoInstanceList = append(hostInfoInstanceList, hostInfoInstance)
+		}
+		return hostInfoInstanceList
+		// IP
+	} else if netutils.IsIPAddress(hostPattern) {
+		hostInfoInstance := NewHostInfo()
+		hostInfoInstance.IP = hostPattern
+		hostInfoInstanceList = append(hostInfoInstanceList, hostInfoInstance)
+		return hostInfoInstanceList
+		// 组名
+	} else {
+		hostInfoInstanceMap, err := parseGroupFromFile(configFile)
+		if err != nil {
+			logger.Fatal("%v", err)
+		}
+		for group, infos := range hostInfoInstanceMap {
+			if group == hostPattern {
+				hostInfoInstanceList = append(hostInfoInstanceList, infos...)
+			}
+		}
+		return hostInfoInstanceList
 	}
-	return ansibleMap
 }

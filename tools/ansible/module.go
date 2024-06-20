@@ -2,6 +2,7 @@ package ansible
 
 import (
 	"gotools/utils/logger"
+	"gotools/utils/sshutils"
 	"strings"
 )
 
@@ -12,49 +13,15 @@ type AnsibleArgs struct {
 	ConfigFile string
 }
 
-func parseHostPattern(hostPattern, configFile string) []*Ansible {
-	ansibleInstanceList := make([]*Ansible, 0, 10)
-
-	// IP地址段
-	if isIPRange(hostPattern) {
-		ipRange, err := ParseIPRange(hostPattern)
-		if err != nil {
-			logger.Fatal("%v", err)
-		}
-		for _, ip := range ipRange {
-			ansibleInstance := NewAnsible()
-			ansibleInstance.HostInfo.IP = ip.String()
-			ansibleInstanceList = append(ansibleInstanceList, ansibleInstance)
-		}
-		return ansibleInstanceList
-		// IP
-	} else if isIPAddress(hostPattern) {
-		ansibleInstance := NewAnsible()
-		ansibleInstance.HostInfo.IP = hostPattern
-		ansibleInstanceList = append(ansibleInstanceList, ansibleInstance)
-		return ansibleInstanceList
-		// 组名
-	} else {
-		ansibleInstanceMap, err := parseGroupFromFile(configFile)
-		if err != nil {
-			logger.Fatal("%v", err)
-		}
-		for group, infos := range ansibleInstanceMap {
-			if group == hostPattern {
-				ansibleInstanceList = append(ansibleInstanceList, infos...)
-			}
-		}
-		return ansibleInstanceList
-	}
-}
-
 func RunModules(hostPattern string, ansibleArgs AnsibleArgs) {
-	ansibleMap := parseHostPattern(hostPattern, ansibleArgs.ConfigFile)
-	for _, ansible := range ansibleMap {
-		ansible.HostInfo.PrivateKey, _ = currentSSHPath()
+	ansible := NewAnsible()
+	hostsMap := ParseHostPattern(hostPattern, ansibleArgs.ConfigFile)
+	for _, hostInfo := range hostsMap {
+		hostInfo.PrivateKey, _ = sshutils.CurrentSSHPath()
 		if ansibleArgs.Password != "" {
-			ansible.HostInfo.Password = ansibleArgs.Password
+			hostInfo.Password = ansibleArgs.Password
 		}
+		ansible.HostInfo = *hostInfo
 		switch ansibleArgs.ModuleName {
 		case "shell":
 			ansible.Command = ansibleArgs.Args

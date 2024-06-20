@@ -35,12 +35,17 @@ type HostInfo struct {
 
 func NewAnsible() *Ansible {
 	return &Ansible{
-		HostInfo: HostInfo{
-			Port: "22",
-			User: "root",
-		},
+		HostInfo: *NewHostInfo(),
 	}
 }
+
+func NewHostInfo() *HostInfo {
+	return &HostInfo{
+		Port: "22",
+		User: "root",
+	}
+}
+
 func (ansible *Ansible) newSSHClientConfig() error {
 	var authMethods []ssh.AuthMethod
 

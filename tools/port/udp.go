@@ -58,7 +58,7 @@ func (portInfo *Port) udpServers() {
 		go func(p int) {
 			defer wg.Done()
 			if isLocalUDPPortOpen(p) {
-				logger.Ignore("TCP Port %d 已占用,忽略\n", p)
+				logger.Ignore("UDP Port %d 已占用,忽略\n", p)
 				return
 			}
 			udpServer(p)
