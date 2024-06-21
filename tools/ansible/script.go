@@ -41,15 +41,15 @@ func (ansible *Ansible) scriptOutput(status int) {
 }
 
 func (ansible *Ansible) runScriptModule() {
-	output, exitStatus, err := ansible.runScriptOverSSH()
+	output, rc, err := ansible.runScriptOverSSH()
 	if err != nil {
-		ansible.Script.Rc = exitStatus
+		ansible.Script.Rc = rc
 		ansible.Script.Changed = false
 		ansible.Script.Stderr = err.Error()
 		ansible.scriptOutput(1)
 		return
 	}
-	ansible.Script.Rc = exitStatus
+	ansible.Script.Rc = rc
 	ansible.Script.Changed = true
 	ansible.Script.Stdout = output
 	ansible.scriptOutput(2)
@@ -78,7 +78,7 @@ func (ansible *Ansible) runScriptOverSSH() (string, int, error) {
 		return "", -99, fmt.Errorf("failed to upload script: %v", err)
 	}
 
-	output, exitStatus, err := ansible.executeRemoteScript()
+	output, rc, err := ansible.execRemoteScript()
 	if err != nil {
 		return "", -99, fmt.Errorf("failed to execute script: %v", err)
 	}
@@ -88,7 +88,7 @@ func (ansible *Ansible) runScriptOverSSH() (string, int, error) {
 		return "", -99, err
 	}
 
-	return output, exitStatus, nil
+	return output, rc, nil
 }
 
 func (ansible *Ansible) uploadScript() error {
@@ -137,10 +137,10 @@ func (ansible *Ansible) removeScript() error {
 	return nil
 }
 
-func (ansible *Ansible) executeRemoteScript() (string, int, error) {
+func (ansible *Ansible) execRemoteScript() (string, int, error) {
 	ansible.Command = fmt.Sprintf("bash %s", ansible.Script.remoteScriptPath)
-	output, exitStatus, err := ansible.runRemoteShell()
-	return string(output), exitStatus, err
+	output, rc, err := ansible.runRemoteShell()
+	return string(output), rc, err
 }
 
 func (ansible *Ansible) generaRemoteScriptPath() {

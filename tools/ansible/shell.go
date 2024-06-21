@@ -10,7 +10,7 @@ import (
 
 func (ansible *Ansible) runRemoteShell() (string, int, error) {
 	var err error
-	var exitStatus int
+	var rc int
 	err = ansible.newSSHClientConfig()
 	if err != nil {
 		return "", -99, err
@@ -32,21 +32,21 @@ func (ansible *Ansible) runRemoteShell() (string, int, error) {
 
 	if err != nil {
 		if exitErr, ok := err.(*ssh.ExitError); ok {
-			exitStatus = exitErr.ExitStatus()
+			rc = exitErr.ExitStatus()
 			msg := fmt.Sprintf(" %s\n", strings.TrimSpace(string(output)))
-			return string(output), exitStatus, fmt.Errorf("%v", msg)
+			return string(output), rc, fmt.Errorf("%v", msg)
 		}
 		msg := fmt.Sprintf("run command %s on host %s error %v", ansible.Command, ansible.HostInfo.IP, err)
-		return "", exitStatus, fmt.Errorf("error: %v", msg)
+		return "", rc, fmt.Errorf("error: %v", msg)
 	}
 	return string(output), 0, nil
 }
 
 func (ansible *Ansible) runShellModule() {
-	output, exitStatus, err := ansible.runRemoteShell()
+	output, rc, err := ansible.runRemoteShell()
 	if err != nil {
-		logger.Failed("%v | FAILED | rc=%v >>\n %v", ansible.HostInfo.IP, exitStatus, err)
+		logger.Failed("%v | FAILED | rc=%v >>\n %v", ansible.HostInfo.IP, rc, err)
 		return
 	}
-	logger.Changed("%v | CHANGED | rc=%v >>\n %s", ansible.HostInfo.IP, exitStatus, output)
+	logger.Changed("%v | CHANGED | rc=%v >>\n %s", ansible.HostInfo.IP, rc, output)
 }

@@ -6,6 +6,7 @@ import (
 	"gotools/utils/logger"
 	"gotools/utils/sshutils"
 	"os/exec"
+	"strings"
 )
 
 type Copy struct {
@@ -40,13 +41,13 @@ func (ansible *Ansible) copyOutput(status int) {
 
 func (ansible *Ansible) isNeedCopy() (bool, error) {
 	ansible.Command = "[[ -f " + ansible.Copy.DestFullPath + " ]]"
-	_, exitStatus, err := ansible.runRemoteShell()
+	_, rc, err := ansible.runRemoteShell()
 	// 排除test -f 返回值问题
-	if err != nil && exitStatus == -99 {
+	if err != nil && rc == -99 {
 		return false, err
 	}
 	// 不存在文件
-	if exitStatus != 0 {
+	if rc != 0 {
 		return true, nil
 	}
 
@@ -114,4 +115,11 @@ func (ansible *Ansible) execCopy() {
 	ansible.Copy.Changed = true
 	ansible.Copy.Status = "success"
 	ansible.copyOutput(2)
+}
+
+func removeOtherString(input string) string {
+	noFileName := strings.Split(string(input), " ")[0]
+	noSpaces := strings.ReplaceAll(noFileName, " ", "")
+	noNewlines := strings.ReplaceAll(noSpaces, "\n", "")
+	return noNewlines
 }
