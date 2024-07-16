@@ -208,7 +208,12 @@ func (sshKey *SSHKey) delKey() {
 	addr := fmt.Sprintf("%s:%s", sshKey.Host, sshKey.Port)
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		logger.Failed("failed to dial: %v", err)
+		if strings.Contains(err.Error(), "[none publickey]") {
+			logger.Failed("没有这个主机的公钥: %v\n", sshKey.Host)
+			return
+		} else {
+			logger.Fatal("failed to dial: %v", err)
+		}
 	}
 	defer client.Close()
 
@@ -224,10 +229,8 @@ func (sshKey *SSHKey) delKey() {
 	defer session.Close()
 
 	sshKey.generatePublicKeyFromOldPrivateKey()
-	str1 := strings.ReplaceAll(string(sshKey.publicKey), "\n", "")
-	str2 := strings.ReplaceAll(str1, "/", "\\/")
 
-	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", str2)
+	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", strings.ReplaceAll(strings.ReplaceAll(string(sshKey.publicKey), "\n", ""), "/", "\\/"))
 	if err := session.Run(cmd); err != nil {
 		logger.Failed("failed to delete public key: %v", err)
 	}

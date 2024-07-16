@@ -61,7 +61,7 @@ func (ansible *Ansible) newSSHClientConfig() error {
 	}
 	// 将私钥添加进入认证方案列表
 	authMethods = append(authMethods, ssh.PublicKeys(signer))
-
+	// 如果密码不为空，将密码加入认证方案,但是只有在私钥认证不可用时才会使用密码
 	if ansible.HostInfo.Password != "" {
 		authMethods = append(authMethods, ssh.Password(ansible.HostInfo.Password))
 	}
