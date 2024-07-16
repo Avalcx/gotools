@@ -120,6 +120,7 @@ func ParseHostPattern(hostPattern, configFile string) []*HostInfo {
 		return hostInfoInstanceList
 		// 组名
 	} else {
+		logger.Changed("使用配置文件: %v\n", configFile)
 		hostInfoInstanceMap, err := parseGroupFromFile(configFile)
 		if err != nil {
 			logger.Fatal("%v", err)

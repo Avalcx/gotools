@@ -164,32 +164,26 @@ func (sshKey *SSHKey) pushKey() {
 	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
 }
 
-// func PushKeys(hostsSlice []string, user string, password string) {
-// 	sshKeyInstance := newSSHKey()
-// 	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
-// 	for _, hosts := range hostsSlice {
-// 		ips, err := netutils.ParseIPRange(hosts)
-// 		if err != nil {
-// 			logger.Fatal("hosts format error:%v\n", err)
-// 		}
-// 		for _, ip := range ips {
-// 			sshKeyInstance.Host = ip.String()
-// 			sshKeyInstance.User = user
-// 			sshKeyInstance.Password = password
-// 			sshKeyInstance.pushKey()
-// 		}
-// 	}
-// }
-
 func PushKeys(hostPattern, configFile, user, password string) {
 	sshKeyInstance := newSSHKey()
 	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
 	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
 	for _, hostInfo := range hostsMap {
 		sshKeyInstance.Host = hostInfo.IP
-		sshKeyInstance.User = user
-		sshKeyInstance.Password = password
+		sshKeyInstance.checkPassword(password, hostInfo.Password)
 		sshKeyInstance.pushKey()
+	}
+}
+
+func (sshKey *SSHKey) checkPassword(cmdPassword, configPassword string) {
+	if cmdPassword != "" {
+		sshKey.Password = cmdPassword
+		logger.Changed("使用命令行输入的密码\n")
+	} else if cmdPassword == "" && configPassword == "" {
+		logger.Fatal("配置文件中和命令行中配置的密码均为空\n")
+	} else if cmdPassword == "" {
+		sshKey.Password = configPassword
+		logger.Changed("使用配置文件中的密码\n")
 	}
 }
 
@@ -230,29 +224,15 @@ func (sshKey *SSHKey) delKey() {
 	defer session.Close()
 
 	sshKey.generatePublicKeyFromOldPrivateKey()
+	str1 := strings.ReplaceAll(string(sshKey.publicKey), "\n", "")
+	str2 := strings.ReplaceAll(str1, "/", "\\/")
 
-	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", strings.ReplaceAll(string(sshKey.publicKey), "\n", ""))
+	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", str2)
 	if err := session.Run(cmd); err != nil {
 		logger.Failed("failed to delete public key: %v", err)
 	}
 	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
 }
-
-// func DelKeys(hostsSlice []string, user string) {
-// 	sshKeyInstance := newSSHKey()
-// 	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
-// 	for _, hosts := range hostsSlice {
-// 		ips, err := netutils.ParseIPRange(hosts)
-// 		if err != nil {
-// 			logger.Fatal("hosts format error:%v\n", err)
-// 		}
-// 		for _, ip := range ips {
-// 			sshKeyInstance.Host = ip.String()
-// 			sshKeyInstance.User = user
-// 			sshKeyInstance.delKey()
-// 		}
-// 	}
-// }
 
 func DelKeys(hostPattern, configFile, user string) {
 	sshKeyInstance := newSSHKey()

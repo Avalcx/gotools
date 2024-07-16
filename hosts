@@ -1,4 +1,4 @@
 [test]
-172.168.101.71
-172.168.101.72
-172.168.101.73
+ansible_host=172.168.101.71 ansible_port=22 ansible_user=root ansible_ssh_pass=317210
+#ansible_host=172.168.101.72 ansible_port=22 ansible_user=root ansible_ssh_pass=317210
+#172.168.101.71
