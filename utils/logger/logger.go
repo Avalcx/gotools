@@ -45,12 +45,3 @@ func Printf(format string, a ...any) {
 func Println(a ...any) {
 	fmt.Println(a...)
 }
-
-// fmt.Println("\033[31mThis is red text\033[0m")
-// fmt.Println("\033[32mThis is green text\033[0m")
-// fmt.Println("\033[33mThis is yellow text\033[0m")
-// fmt.Println("\033[34mThis is blue text\033[0m")
-// fmt.Println("\033[35mThis is purple text\033[0m")
-// fmt.Println("\033[36mThis is cyan text\033[0m")
-// fmt.Println("\033[1mThis is bold text\033[0m")
-// fmt.Println("This is normal text")

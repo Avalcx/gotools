@@ -170,12 +170,12 @@ func PushKeys(hostPattern, configFile, user, password string) {
 	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
 	for _, hostInfo := range hostsMap {
 		sshKeyInstance.Host = hostInfo.IP
-		sshKeyInstance.checkPassword(password, hostInfo.Password)
+		sshKeyInstance.selectPassword(password, hostInfo.Password)
 		sshKeyInstance.pushKey()
 	}
 }
 
-func (sshKey *SSHKey) checkPassword(cmdPassword, configPassword string) {
+func (sshKey *SSHKey) selectPassword(cmdPassword, configPassword string) {
 	if cmdPassword != "" {
 		sshKey.Password = cmdPassword
 		logger.Changed("使用命令行输入的密码\n")
@@ -187,14 +187,14 @@ func (sshKey *SSHKey) checkPassword(cmdPassword, configPassword string) {
 	}
 }
 
-func (sshKey *SSHKey) delKey() {
+func (sshKey *SSHKey) delKey() error {
 	key, err := os.ReadFile(sshKey.privateKeyPath)
 	if err != nil {
-		logger.Fatal("私钥文件读取错误: %v", err)
+		return fmt.Errorf("私钥文件读取错误: %v", err)
 	}
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		logger.Fatal("解析私钥失败: %v", err)
+		return fmt.Errorf("解析私钥失败: %v", err)
 	}
 
 	config := &ssh.ClientConfig{
@@ -209,22 +209,21 @@ func (sshKey *SSHKey) delKey() {
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		if strings.Contains(err.Error(), "[none publickey]") {
-			logger.Failed("没有这个主机的公钥: %v\n", sshKey.Host)
-			return
+			return fmt.Errorf("没有这个主机的公钥: %v", sshKey.Host)
 		} else {
-			logger.Fatal("failed to dial: %v", err)
+			return fmt.Errorf("failed to dial: %v", err)
 		}
 	}
 	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
-		logger.Failed("failed to create session: %v", err)
+		return fmt.Errorf("failed to create session: %v", err)
 	}
 	defer session.Close()
 	session, err = client.NewSession()
 	if err != nil {
-		logger.Failed("failed to create session: %v", err)
+		return fmt.Errorf("failed to create session: %v", err)
 	}
 	defer session.Close()
 
@@ -232,9 +231,10 @@ func (sshKey *SSHKey) delKey() {
 
 	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", strings.ReplaceAll(strings.ReplaceAll(string(sshKey.publicKey), "\n", ""), "/", "\\/"))
 	if err := session.Run(cmd); err != nil {
-		logger.Failed("failed to delete public key: %v", err)
+		return fmt.Errorf("failed to delete public key: %v", err)
 	}
 	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
+	return nil
 }
 
 func DelKeys(hostPattern, configFile, user string) {
@@ -244,6 +244,9 @@ func DelKeys(hostPattern, configFile, user string) {
 	for _, hostInfo := range hostsMap {
 		sshKeyInstance.Host = hostInfo.IP
 		sshKeyInstance.User = user
-		sshKeyInstance.delKey()
+		err := sshKeyInstance.delKey()
+		if err != nil {
+			logger.Failed(err.Error())
+		}
 	}
 }
