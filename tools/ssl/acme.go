@@ -53,6 +53,7 @@ func (sslInfo *SSLInfo) Acme() {
 	cfg := alidns.NewDefaultConfig()
 	cfg.APIKey = sslInfo.AliAK
 	cfg.SecretKey = sslInfo.AliSK
+	cfg.TTL = 600
 	p, err := alidns.NewDNSProviderConfig(cfg)
 	if err != nil {
 		logger.Fatal("%v\n", err)
@@ -77,11 +78,11 @@ func (sslInfo *SSLInfo) Acme() {
 		logger.Fatal("%v\n", err)
 	}
 	os.MkdirAll(sslInfo.Domains[0], 0755)
-	err = os.WriteFile("acme/key.pem", certificates.PrivateKey, os.ModePerm)
+	err = os.WriteFile(sslInfo.Domains[0]+"/key.pem", certificates.PrivateKey, os.ModePerm)
 	if err != nil {
 		logger.Failed("%v\n", err)
 	}
-	err = os.WriteFile("acme/cert.pem", certificates.Certificate, os.ModePerm)
+	err = os.WriteFile(sslInfo.Domains[0]+"/cert.pem", certificates.Certificate, os.ModePerm)
 	if err != nil {
 		logger.Failed("%v\n", err)
 	}
