@@ -17,7 +17,7 @@ func RunModules(hostPattern string, ansibleArgs AnsibleArgs) {
 	ansible := NewAnsible()
 	hostsMap := ParseHostPattern(hostPattern, ansibleArgs.ConfigFile)
 	for _, hostInfo := range hostsMap {
-		hostInfo.PrivateKey, _ = sshutils.CurrentSSHPath()
+		hostInfo.PrivateKey, _, _ = sshutils.CurrentSSHPath()
 		if ansibleArgs.Password != "" {
 			hostInfo.Password = ansibleArgs.Password
 		}

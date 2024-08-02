@@ -22,6 +22,7 @@ type SSHKey struct {
 	Port           string
 	User           string
 	Password       string
+	sshPath        string
 	privateKeyPath string
 	publicKeyPath  string
 	privateKey     []byte
@@ -36,6 +37,7 @@ func newSSHKey() *SSHKey {
 }
 
 func (sshKey *SSHKey) generateNewSSHKeyPair() error {
+
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return err
@@ -97,6 +99,11 @@ func (sshKey *SSHKey) refreshPublicKeyFile() {
 		err := sshKey.generateNewSSHKeyPair()
 		if err != nil {
 			logger.Fatal("failed to generate SSH key pair:%v\n", err)
+		}
+
+		if err := os.MkdirAll(sshKey.sshPath, 0700); err != nil {
+			fmt.Printf("Error creating directory: %v\n", err)
+			return
 		}
 
 		if err := os.WriteFile(sshKey.privateKeyPath, sshKey.privateKey, 0600); err != nil {
@@ -166,7 +173,7 @@ func (sshKey *SSHKey) pushKey() {
 
 func PushKeys(hostPattern, configFile, user, password string) {
 	sshKeyInstance := newSSHKey()
-	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
+	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath, sshKeyInstance.sshPath = sshutils.CurrentSSHPath()
 	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
 	for _, hostInfo := range hostsMap {
 		sshKeyInstance.Host = hostInfo.IP
@@ -239,7 +246,7 @@ func (sshKey *SSHKey) delKey() error {
 
 func DelKeys(hostPattern, configFile, user string) {
 	sshKeyInstance := newSSHKey()
-	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath = sshutils.CurrentSSHPath()
+	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath, sshKeyInstance.sshPath = sshutils.CurrentSSHPath()
 	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
 	for _, hostInfo := range hostsMap {
 		sshKeyInstance.Host = hostInfo.IP

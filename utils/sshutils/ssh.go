@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-func CurrentSSHPath() (privateKeyPath string, publicKeyPath string) {
+func CurrentSSHPath() (privateKeyPath, publicKeyPath, sshPath string) {
 	currentUser, err := user.Current()
 	if err != nil {
 		logger.Fatal("failed to get current user: %v\n", err)
@@ -17,7 +17,7 @@ func CurrentSSHPath() (privateKeyPath string, publicKeyPath string) {
 	sshDir := filepath.Join(currentUser.HomeDir, ".ssh")
 	privateKeyPath = filepath.Join(sshDir, "id_rsa")
 	publicKeyPath = filepath.Join(sshDir, "id_rsa.pub")
-	return privateKeyPath, publicKeyPath
+	return privateKeyPath, publicKeyPath, sshDir
 }
 
 func GetLocalFileMd5(file string) (string, error) {
