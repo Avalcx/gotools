@@ -179,8 +179,6 @@ func PushKeys(hostPattern, configFile, user, password string) {
 		sshKeyInstance.Host = hostInfo.IP
 		sshKeyInstance.selectPassword(password, hostInfo.Password)
 		sshKeyInstance.pushKey()
-		fp := sshKeyInstance.fingerprintSHA256()
-		fmt.Println(fp)
 	}
 }
 
@@ -258,22 +256,4 @@ func DelKeys(hostPattern, configFile, user string) {
 			logger.Failed(err.Error())
 		}
 	}
-}
-
-// fingerprintSHA256 returns the SHA256 fingerprint of the host key
-func (sshKey *SSHKey) fingerprintSHA256() string {
-	p := []byte("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDm3IpqPhC4MJPuTFAPCCeBtM68YaTiUMvb6lE/8lyIseVt2e9fnd32Y9R+EKehLmz9HJad7TAXcWrQXbAU9iBaDu1pAScEVjXgL3TMmBWxMLStLfdVPQuMsrRga9WUCVJocSPS1qCvHoMiT2xnXS4Xzf92QclmW0zbcYfwqqUazluYmuLQeiDA59kJgWTQArtTm51IsrYaiLhpGq7aL0bytrTuHM7FeHsxtOmAAKiPnU6fIYlW9V7a5GuD2IRFdBmGCcmPfQ19+dFf4WiAW/EX77s+ON62hCdVMloWAp/GB8UMkgRnbSQRcwOoJe0IFL/hPg00/vSWaqYbjocuT55/")
-	// 直接解析 publicKey
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(p)
-	if err != nil {
-		// 处理错误，例如返回空字符串或者记录错误日志
-		fmt.Printf("Error parsing public key: %v\n", err)
-		return ""
-	}
-
-	// 计算 SHA256 指纹
-	fp := ssh.FingerprintSHA256(pubKey)
-
-	// 移除 "SHA256:" 前缀
-	return strings.ReplaceAll(fp, "SHA256:", "")
 }

@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"gotools/utils/logger"
 	"gotools/utils/sshutils"
-	"os/exec"
+	"io"
+	"os"
 	"strings"
+	"time"
 )
 
 type Copy struct {
-	fileName     string
-	src          string
-	dest         string
-	DestFullPath string `json:"dest"`
+	fileName     string // 文件名
+	src          string // 源路径，包含文件名
+	dest         string // 目的路径，不包含文件名
+	DestFullPath string `json:"dest"` // 目的路径，包含文件名
 	Changed      bool   `json:"changed"`
 	Status       string `json:"status"`
 	Checksum     string `json:"checksum"`
@@ -70,12 +72,92 @@ func (ansible *Ansible) isNeedCopy() (bool, error) {
 	return true, nil
 }
 
-func (ansible *Ansible) runSCP() error {
-	cmd := exec.Command("scp", "-r", ansible.Copy.src, fmt.Sprintf("%s@%s:%s", ansible.HostInfo.User, ansible.HostInfo.IP, ansible.Copy.dest))
-	output, err := cmd.CombinedOutput()
+type ProgressWriter struct {
+	Total       int64
+	Transferred int64
+	StartTime   time.Time
+	LastTime    time.Time
+}
+
+func (pw *ProgressWriter) Update(n int64) {
+	pw.Transferred += n
+	now := time.Now()
+	percentage := float64(pw.Transferred) / float64(pw.Total) * 100
+	elapsed := now.Sub(pw.LastTime).Seconds()
+	speed := float64(n) / 1024 / elapsed
+	pw.LastTime = now
+	fmt.Printf("\rProgress: %.2f%%, Speed: %.2f KB/s", percentage, speed)
+}
+
+// func (ansible *Ansible) runSCP() error {
+// 	cmd := exec.Command("scp", "-r", ansible.Copy.src, fmt.Sprintf("%s@%s:%s", ansible.HostInfo.User, ansible.HostInfo.IP, ansible.Copy.dest))
+// 	output, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to run scp command: %v, output: %s", err, output)
+// 	}
+// 	return nil
+// }
+
+func (ansible *Ansible) runSFTP() error {
+	err := ansible.newSSHClient()
 	if err != nil {
-		return fmt.Errorf("failed to run scp command: %v, output: %s", err, output)
+		return err
 	}
+	defer ansible.sshClientClose()
+
+	err = ansible.newSFTPClient()
+	if err != nil {
+		return err
+	}
+	defer ansible.sftpClientClose()
+
+	srcFile, err := os.Open(ansible.Copy.src)
+	if err != nil {
+		return fmt.Errorf("failed to open local file: %v", err)
+	}
+	defer srcFile.Close()
+
+	srcFileInfo, err := srcFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	dstFile, err := ansible.SSH.SFTPClient.Create(ansible.Copy.DestFullPath)
+	if err != nil {
+		return fmt.Errorf("failed to create remote file: %v", err)
+	}
+	defer dstFile.Close()
+
+	// 创建进度写入器
+	progressWriter := &ProgressWriter{
+		Total:     srcFileInfo.Size(),
+		StartTime: time.Now(),
+		LastTime:  time.Now(),
+	}
+
+	// 使用较大的缓冲区提高传输效率
+	const bufferSize = 32 * 1024 // 32KB
+	buf := make([]byte, bufferSize)
+
+	// 复制本地文件内容到远程文件
+	for {
+		n, err := srcFile.Read(buf)
+		if err != nil && err != io.EOF {
+			return fmt.Errorf("failed to read from source file: %v", err)
+		}
+		if n == 0 {
+			break
+		}
+
+		// 写入远程文件
+		if _, err := dstFile.Write(buf[:n]); err != nil {
+			return fmt.Errorf("failed to write to destination file: %v", err)
+		}
+
+		progressWriter.Update(int64(n))
+	}
+
+	fmt.Println("\nFile transfer completed.")
 	return nil
 }
 
@@ -95,7 +177,8 @@ func (ansible *Ansible) execCopy() {
 		ansible.copyOutput(0)
 		return
 	}
-	err = ansible.runSCP()
+	// err = ansible.runSCP()
+	err = ansible.runSFTP()
 	if err != nil {
 		ansible.Copy.Changed = false
 		ansible.Copy.Status = "faild"

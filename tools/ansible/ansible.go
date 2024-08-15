@@ -70,7 +70,7 @@ func (ansible *Ansible) newSSHClientConfig() error {
 		User:            ansible.HostInfo.User,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         5 * time.Second,
+		Timeout:         10 * time.Second,
 	}
 	return nil
 }
