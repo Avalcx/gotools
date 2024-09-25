@@ -7,14 +7,19 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"os"
-	"strings"
-
 	"gotools/tools/ansible"
 	"gotools/utils/logger"
 	"gotools/utils/sshutils"
+	"os"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
+)
+
+const (
+	passwordLength = 16
+	characters     = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"
+	passwordFile   = "new_password.txt"
 )
 
 type SSHKey struct {
@@ -22,6 +27,7 @@ type SSHKey struct {
 	Port           string
 	User           string
 	Password       string
+	NewPassword    string
 	sshPath        string
 	privateKeyPath string
 	publicKeyPath  string
@@ -116,85 +122,7 @@ func (sshKey *SSHKey) refreshPublicKeyFile() {
 	}
 }
 
-func (sshKey *SSHKey) uploadPublicKey() error {
-	config := &ssh.ClientConfig{
-		User: sshKey.User,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(sshKey.Password),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	addr := fmt.Sprintf("%s:%s", sshKey.Host, sshKey.Port)
-	client, err := ssh.Dial("tcp", addr, config)
-	if err != nil {
-		return fmt.Errorf("failed to dial: %v", err)
-	}
-	defer client.Close()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create session: %v", err)
-	}
-	defer session.Close()
-
-	var buf bytes.Buffer
-	session.Stdout = &buf
-	if err := session.Run("cat ~/.ssh/authorized_keys 2>/dev/null || true"); err != nil {
-		return fmt.Errorf("failed to read authorized_keys: %v", err)
-	}
-
-	existingKeys := buf.String()
-
-	if strings.Contains(existingKeys, string(sshKey.publicKey)) {
-		return nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		return fmt.Errorf("failed to create session: %v", err)
-	}
-	defer session.Close()
-
-	cmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", sshKey.publicKey)
-	if err := session.Run(cmd); err != nil {
-		return fmt.Errorf("failed to upload public key: %v", err)
-	}
-	return nil
-}
-
-func (sshKey *SSHKey) pushKey() {
-	sshKey.refreshPublicKeyFile()
-	if err := sshKey.uploadPublicKey(); err != nil {
-		logger.Fatal("failed to upload public key:%v\n", err)
-	}
-	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
-}
-
-func PushKeys(hostPattern, configFile, user, password string) {
-	sshKeyInstance := newSSHKey()
-	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath, sshKeyInstance.sshPath = sshutils.CurrentSSHPath()
-	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
-	for _, hostInfo := range hostsMap {
-		sshKeyInstance.Host = hostInfo.IP
-		sshKeyInstance.selectPassword(password, hostInfo.Password)
-		sshKeyInstance.pushKey()
-	}
-}
-
-func (sshKey *SSHKey) selectPassword(cmdPassword, configPassword string) {
-	if cmdPassword != "" {
-		sshKey.Password = cmdPassword
-		logger.Changed("使用命令行输入的密码\n")
-	} else if cmdPassword == "" && configPassword == "" {
-		logger.Fatal("配置文件中和命令行中配置的密码均为空\n")
-	} else if cmdPassword == "" {
-		sshKey.Password = configPassword
-		logger.Changed("使用配置文件中的密码\n")
-	}
-}
-
-func (sshKey *SSHKey) delKey() error {
+func (sshKey *SSHKey) runCMD(cmd string) error {
 	key, err := os.ReadFile(sshKey.privateKeyPath)
 	if err != nil {
 		return fmt.Errorf("私钥文件读取错误: %v", err)
@@ -234,10 +162,107 @@ func (sshKey *SSHKey) delKey() error {
 	}
 	defer session.Close()
 
-	sshKey.generatePublicKeyFromOldPrivateKey()
-
-	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", strings.ReplaceAll(strings.ReplaceAll(string(sshKey.publicKey), "\n", ""), "/", "\\/"))
 	if err := session.Run(cmd); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (sshKey *SSHKey) uploadPublicKey() (int, error) {
+	config := &ssh.ClientConfig{
+		User: sshKey.User,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(sshKey.Password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	addr := fmt.Sprintf("%s:%s", sshKey.Host, sshKey.Port)
+	client, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		return 0, fmt.Errorf("failed to dial: %v", err)
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return 0, fmt.Errorf("failed to create session: %v", err)
+	}
+	defer session.Close()
+
+	var buf bytes.Buffer
+	session.Stdout = &buf
+	if err := session.Run("cat ~/.ssh/authorized_keys 2>/dev/null || true"); err != nil {
+		return 0, fmt.Errorf("failed to read authorized_keys: %v", err)
+	}
+
+	existingKeys := buf.String()
+
+	if strings.Contains(existingKeys, string(sshKey.publicKey)) {
+		return 1, nil
+	}
+
+	session, err = client.NewSession()
+	if err != nil {
+		return 0, fmt.Errorf("failed to create session: %v", err)
+	}
+	defer session.Close()
+
+	cmd := fmt.Sprintf("mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo '%s' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys", sshKey.publicKey)
+	if err := session.Run(cmd); err != nil {
+		return 0, fmt.Errorf("failed to upload public key: %v", err)
+	}
+	return 0, nil
+}
+
+func (sshKey *SSHKey) pushKey() {
+	sshKey.refreshPublicKeyFile()
+	if status, err := sshKey.uploadPublicKey(); err != nil {
+		logger.Failed("%v | User=%v | Status >> Failed\n%v\n", sshKey.Host, sshKey.User, err)
+	} else {
+		if status == 1 {
+			logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
+		} else {
+			logger.Changed("%v | User=%v | Status >> CHANGED\n", sshKey.Host, sshKey.User)
+		}
+	}
+}
+
+func PushKeys(hostPattern, configFile, user, password string) {
+	sshKeyInstance := newSSHKey()
+	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath, sshKeyInstance.sshPath = sshutils.CurrentSSHPath()
+	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
+	isloged := false
+	for _, hostInfo := range hostsMap {
+		sshKeyInstance.selectPassword(password, hostInfo.Password, isloged)
+		sshKeyInstance.Host = hostInfo.IP
+		sshKeyInstance.pushKey()
+		isloged = true
+	}
+	logger.Success("已完成免密\n")
+}
+
+func (sshKey *SSHKey) selectPassword(cmdPassword, configPassword string, isloged bool) {
+	if cmdPassword != "" {
+		sshKey.Password = cmdPassword
+		if !isloged {
+			logger.Changed("使用命令行输入的密码\n")
+		}
+	} else if cmdPassword == "" && configPassword == "" {
+		if !isloged {
+			logger.Fatal("配置文件中和命令行中配置的密码均为空\n")
+		}
+	} else if cmdPassword == "" {
+		sshKey.Password = configPassword
+		if !isloged {
+			logger.Changed("使用配置文件中的密码\n")
+		}
+	}
+}
+
+func (sshKey *SSHKey) delKey() error {
+	cmd := fmt.Sprintf("sed -i '/%s/d' ~/.ssh/authorized_keys", strings.ReplaceAll(strings.ReplaceAll(string(sshKey.publicKey), "\n", ""), "/", "\\/"))
+	if err := sshKey.runCMD(cmd); err != nil {
 		return fmt.Errorf("failed to delete public key: %v", err)
 	}
 	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
@@ -247,6 +272,7 @@ func (sshKey *SSHKey) delKey() error {
 func DelKeys(hostPattern, configFile, user string) {
 	sshKeyInstance := newSSHKey()
 	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath, sshKeyInstance.sshPath = sshutils.CurrentSSHPath()
+	sshKeyInstance.generatePublicKeyFromOldPrivateKey()
 	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
 	for _, hostInfo := range hostsMap {
 		sshKeyInstance.Host = hostInfo.IP
@@ -256,4 +282,70 @@ func DelKeys(hostPattern, configFile, user string) {
 			logger.Failed(err.Error())
 		}
 	}
+	logger.Success("已完成删除免密\n")
+}
+
+func (sshKey *SSHKey) generatePassword() string {
+	password := make([]byte, passwordLength)
+	rand.Read(password)
+	for i := range password {
+		password[i] = characters[int(password[i])%len(characters)]
+	}
+	return string(password)
+}
+
+func (sshKey *SSHKey) clearPasswordFile() error {
+	err := os.WriteFile(passwordFile, []byte(""), 0600)
+	if err != nil {
+		return fmt.Errorf("failed to clear password file: %v", err)
+	}
+	return nil
+}
+
+func (sshKey *SSHKey) savePasswordToFile() error {
+	data := []byte(fmt.Sprintf("ansible_host=%s ansible_user=%s ansible_ssh_pass=%s\n", sshKey.Host, sshKey.User, sshKey.NewPassword))
+
+	file, err := os.OpenFile(passwordFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to open password file: %v", err)
+	}
+	defer file.Close()
+
+	if _, err := file.Write(data); err != nil {
+		return fmt.Errorf("failed to append password to file: %v", err)
+	}
+
+	return nil
+}
+
+func (sshKey *SSHKey) chpasswd() error {
+	cmd := fmt.Sprintf("echo 'root:%s' | chpasswd", sshKey.NewPassword)
+	if err := sshKey.runCMD(cmd); err != nil {
+		return fmt.Errorf("failed to change user: %s password: %v", sshKey.User, err)
+	}
+	logger.Success("%v | User=%v | Status >> Success\n", sshKey.Host, sshKey.User)
+	return nil
+}
+
+func Chpasswd(hostPattern, configFile, password string) {
+	sshKeyInstance := newSSHKey()
+	sshKeyInstance.privateKeyPath, sshKeyInstance.publicKeyPath, sshKeyInstance.sshPath = sshutils.CurrentSSHPath()
+	sshKeyInstance.generatePublicKeyFromOldPrivateKey()
+	hostsMap := ansible.ParseHostPattern(hostPattern, configFile)
+	sshKeyInstance.clearPasswordFile()
+	for _, hostInfo := range hostsMap {
+		sshKeyInstance.Host = hostInfo.IP
+		sshKeyInstance.User = hostInfo.User
+		if password == "" {
+			sshKeyInstance.NewPassword = sshKeyInstance.generatePassword()
+		} else {
+			sshKeyInstance.NewPassword = password
+		}
+		err := sshKeyInstance.chpasswd()
+		if err != nil {
+			logger.Failed(err.Error())
+		}
+		sshKeyInstance.savePasswordToFile()
+	}
+	logger.Success("新密码已保存在: %s\n", passwordFile)
 }

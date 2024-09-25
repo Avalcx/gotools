@@ -24,8 +24,11 @@ var sshKeyCmd = &cobra.Command{
 		user, _ := cmd.Flags().GetString("user")
 		password, _ := cmd.Flags().GetString("password")
 		isDelete, _ := cmd.Flags().GetBool("delete")
+		isChpasswd, _ := cmd.Flags().GetBool("chpasswd")
 		if isDelete {
 			sshkey.DelKeys(hostPattern, configFile, user)
+		} else if isChpasswd {
+			sshkey.Chpasswd(hostPattern, configFile, password)
 		} else {
 			sshkey.PushKeys(hostPattern, configFile, user, password)
 		}
@@ -37,4 +40,5 @@ func setupSSHkeyCmd() {
 	sshKeyCmd.Flags().StringP("password", "p", "", "password")
 	sshKeyCmd.Flags().String("config-file", "/etc/ansible/hosts", "兼容ansible-hosts文件,默认读取/etc/ansible/hosts,手动指定其他路径")
 	sshKeyCmd.Flags().Bool("delete", false, "删除指定主机的sshkey")
+	sshKeyCmd.Flags().Bool("chpasswd", false, "修改指定主机的密码,如果没有指定-p参数,将使用随机密码")
 }

@@ -27,12 +27,12 @@ gotools ansible [HOST-PATTERN] -m [MODULE_NAME] -a [ARGS]
 
 
 # example1:
-gotools ansible 192.168.1.1 -m shell -a "w"                  # 已做免密
+gotools ansible 192.168.1.1 -m shell -a w                  # 已做免密
 gotools ansible 192.168.1.1 -m shell -a w --password {PASS}  # 未作免密的情况下，支持使用--password认证
 
 # example2:
-gotools ansible group1 -m shell -a "w"   # 当[HOST-PATTERN]为组名时,默认读取/etc/ansible/hosts下的ansible配置文件
-gotools ansible group1 -m shell -a "w" --config-file=/path/to/file # 自定义配置文件路径
+gotools ansible group1 -m shell -a w   # 当[HOST-PATTERN]为组名时,默认读取/etc/ansible/hosts下的ansible配置文件
+gotools ansible group1 -m shell -a w --config-file=/path/to/file # 自定义配置文件路径
 
 # 配置文件的2种结构,结构1可以指定user和pass
 [group1]
@@ -57,9 +57,16 @@ gotools port --client --ports=80,443,8080-8099 --host=127.0.0.1 --protocol udp
 # 可以使用IP地址或地址段指定主机,也完全兼容ansible的配置文件,读取配置文件中的组名
 gotools sshkey [HOST-PATTERN] -p={PASS} -u={USER} --config-file=/path/to/file 
 # example1:
+# 批量新增免密
 gotools sshkey 192.168.1.1-10 -p={PASS}
 # example2:
 gotools sshkey group1 -p={PASS}
+# example3:
+# 批量删除免密
+gotools sshkey group1 --delete
+# example4:
+# 批量修改密码,如果没有指定-p参数,将使用12位随机密码,并保存在当前目录下new_passwd.txt文件中
+gotools sshkey group1 --chpasswd -p={PASS}
 
 ```
 ### 4. ssl证书工具
