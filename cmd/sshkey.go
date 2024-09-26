@@ -9,6 +9,7 @@ import (
 var sshKeyCmd = &cobra.Command{
 	Use:   "sshkey",
 	Short: "ssh免密",
+	Long:  "批量免密,批量删除免密,批量改密码",
 	Example: `
 	gotools sshkey 192.168.1.1-10 -p={password}
 	gotools sshkey group1 -p={password}
