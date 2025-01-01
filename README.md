@@ -11,6 +11,8 @@
   - UDP 端口检查
 - 批量免密工具
   - 批量免密，完全兼容ansible配置文件
+  - 批量取消免密
+  - 批量修改密码
 - ssl证书工具
   - 证书信息的检查
   - 自签证书生成
@@ -25,23 +27,25 @@ gotools ansible [HOST-PATTERN] -m [MODULE_NAME] -a [ARGS]
 # -a 指定参数
 # 具体查看--help
 
-
 # example1:
-gotools ansible 192.168.1.1 -m shell -a w                  # 已做免密
-gotools ansible 192.168.1.1 -m shell -a w --password {PASS}  # 未作免密的情况下，支持使用--password认证
+# 已做免密
+gotools ansible 192.168.1.1 -m shell -a w                    
+# 未作免密的情况下，支持使用--password认证
+gotools ansible 192.168.1.1 -m shell -a w --password {PASS}  
 
 # example2:
-gotools ansible group1 -m shell -a w   # 当[HOST-PATTERN]为组名时,默认读取/etc/ansible/hosts下的ansible配置文件
-gotools ansible group1 -m shell -a w --config-file=/path/to/file # 自定义配置文件路径
+# 当[HOST-PATTERN]为组名时,默认读取/etc/ansible/hosts下的ansible配置文件
+gotools ansible group1 -m shell -a w
+# 自定义配置文件路径
+gotools ansible group1 -m shell -a w --config-file=/path/to/file 
 
 # 配置文件的2种结构,结构1可以指定user和pass
 [group1]
 ansible_host=172.168.101.71 ansible_port=22 ansible_user=root ansible_ssh_pass=317210
-#ansible_host=172.168.101.72 ansible_port=22 ansible_user=root ansible_ssh_pass=317210
+ansible_host=172.168.101.72 ansible_port=22 ansible_user=root ansible_ssh_pass=317210
 # 结构2需要已经做过免密
 [group2]
 172.168.101.71
-
 ```
 ### 2. 端口检查工具
 端口检查工具，是为了解决网络策略开通的异常问题,用于测试网络策略或防火墙策略
@@ -54,7 +58,8 @@ gotools port --client --ports=80,443,8080-8099 --host=127.0.0.1 --protocol udp
 ```
 ### 3. 批量免密工具
 ```shell
-# 可以使用IP地址或地址段指定主机,也完全兼容ansible的配置文件,读取配置文件中的组名
+# 可以使用IP地址或地址段指定主机,也完全兼容ansible的配置文件,读取配置文件中的组名,默认使用/etc/ansible/hosts
+gotools sshkey [HOST-PATTERN] -p={PASS} -u={USER}
 gotools sshkey [HOST-PATTERN] -p={PASS} -u={USER} --config-file=/path/to/file 
 # example1:
 # 批量新增免密
@@ -65,9 +70,10 @@ gotools sshkey group1 -p={PASS}
 # 批量删除免密
 gotools sshkey group1 --delete
 # example4:
+# 该功能需要先做免密
 # 批量修改密码,如果没有指定-p参数,将使用12位随机密码,并保存在当前目录下new_passwd.txt文件中
+gotools sshkey group1 --chpasswd
 gotools sshkey group1 --chpasswd -p={PASS}
-
 ```
 ### 4. ssl证书工具
 #### 4.1 证书检查

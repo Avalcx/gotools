@@ -249,9 +249,7 @@ func (sshKey *SSHKey) selectPassword(cmdPassword, configPassword string, isloged
 			logger.Changed("使用命令行输入的密码\n")
 		}
 	} else if cmdPassword == "" && configPassword == "" {
-		if !isloged {
-			logger.Fatal("配置文件中和命令行中配置的密码均为空\n")
-		}
+		logger.Fatal("配置文件中和命令行中配置的密码均为空\n")
 	} else if cmdPassword == "" {
 		sshKey.Password = configPassword
 		if !isloged {
