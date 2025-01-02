@@ -1,6 +1,6 @@
 package main
 
-import "gotools/cmd"
+import "github.com/Avalcx/gotools/cmd"
 
 func main() {
 	cmd.Run()

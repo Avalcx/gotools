@@ -2,10 +2,11 @@ package port
 
 import (
 	"fmt"
-	"gotools/utils/logger"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 func (portInfo *Port) tcpClients() {

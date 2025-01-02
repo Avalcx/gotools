@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"gotools/tools/sshkey"
+	"github.com/Avalcx/gotools/tools/sshkey"
 
 	"github.com/spf13/cobra"
 )

@@ -1,9 +1,10 @@
 package ansible
 
 import (
-	"gotools/utils/logger"
-	"gotools/utils/sshutils"
 	"strings"
+
+	"github.com/Avalcx/gotools/utils/logger"
+	"github.com/Avalcx/gotools/utils/sshutils"
 )
 
 type AnsibleArgs struct {

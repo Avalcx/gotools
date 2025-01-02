@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"gotools/tools/ssl"
+	"github.com/Avalcx/gotools/tools/ssl"
 
 	"github.com/spf13/cobra"
 )

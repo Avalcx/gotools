@@ -5,10 +5,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	cryptorand "crypto/rand"
-	"gotools/utils/logger"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/Avalcx/gotools/utils/logger"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"

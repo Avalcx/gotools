@@ -3,12 +3,13 @@ package ansible
 import (
 	"encoding/json"
 	"fmt"
-	"gotools/utils/logger"
-	"gotools/utils/sshutils"
 	"io"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/Avalcx/gotools/utils/logger"
+	"github.com/Avalcx/gotools/utils/sshutils"
 )
 
 type Copy struct {

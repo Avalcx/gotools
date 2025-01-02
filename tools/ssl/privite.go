@@ -6,10 +6,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"gotools/utils/logger"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 func (sslInfo *SSLInfo) GeneratePrivateCert() {

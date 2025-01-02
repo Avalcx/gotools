@@ -3,11 +3,12 @@ package ansible
 import (
 	"encoding/json"
 	"fmt"
-	"gotools/utils/logger"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 type Script struct {

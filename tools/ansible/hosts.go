@@ -2,10 +2,11 @@ package ansible
 
 import (
 	"bufio"
-	"gotools/utils/logger"
-	"gotools/utils/netutils"
 	"os"
 	"strings"
+
+	"github.com/Avalcx/gotools/utils/logger"
+	"github.com/Avalcx/gotools/utils/netutils"
 )
 
 // 设置默认值

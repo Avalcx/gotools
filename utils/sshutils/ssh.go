@@ -3,10 +3,11 @@ package sshutils
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"gotools/utils/logger"
 	"os"
 	"os/user"
 	"path/filepath"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 func CurrentSSHPath() (privateKeyPath, publicKeyPath, sshPath string) {

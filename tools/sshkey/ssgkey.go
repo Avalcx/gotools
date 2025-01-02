@@ -7,11 +7,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"gotools/tools/ansible"
-	"gotools/utils/logger"
-	"gotools/utils/sshutils"
 	"os"
 	"strings"
+
+	"github.com/Avalcx/gotools/tools/ansible"
+	"github.com/Avalcx/gotools/utils/logger"
+	"github.com/Avalcx/gotools/utils/sshutils"
 
 	"golang.org/x/crypto/ssh"
 )

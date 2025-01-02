@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"gotools/tools/ansible"
+	"github.com/Avalcx/gotools/tools/ansible"
 
 	"github.com/spf13/cobra"
 )

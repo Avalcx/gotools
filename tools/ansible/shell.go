@@ -2,8 +2,9 @@ package ansible
 
 import (
 	"fmt"
-	"gotools/utils/logger"
 	"strings"
+
+	"github.com/Avalcx/gotools/utils/logger"
 
 	"golang.org/x/crypto/ssh"
 )

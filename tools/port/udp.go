@@ -2,11 +2,12 @@ package port
 
 import (
 	"fmt"
-	"gotools/utils/logger"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 func (portInfo *Port) udpClients() {

@@ -1,4 +1,4 @@
-module gotools
+module github.com/Avalcx/gotools
 
 go 1.22.4
 

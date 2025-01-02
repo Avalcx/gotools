@@ -6,13 +6,14 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
-	"gotools/utils/logger"
 	"io"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 type CertInfo struct {

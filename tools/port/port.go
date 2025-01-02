@@ -1,9 +1,10 @@
 package port
 
 import (
-	"gotools/utils/logger"
 	"strconv"
 	"strings"
+
+	"github.com/Avalcx/gotools/utils/logger"
 )
 
 type Port struct {

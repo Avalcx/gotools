@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"gotools/tools/port"
-	"gotools/utils/logger"
+	"github.com/Avalcx/gotools/tools/port"
+	"github.com/Avalcx/gotools/utils/logger"
 
 	"github.com/spf13/cobra"
 )
